@@ -1,20 +1,15 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel, Field
 
+from app.schemas.kg_extraction import LocalImportRequest, LocalImportResponse
 from app.services.kg_builder_service import get_kg_builder_service
 
 router = APIRouter(tags=["builder"])
 
 
-class BuilderRunRequest(BaseModel):
-    dry_run: bool = Field(default=False, description="When true, run extraction/merge-preview without writing graph.")
-    max_files: int | None = Field(default=None, ge=1, description="Optional limit for debugging local import.")
-
-
-@router.post("/builder/run-local-import")
-async def run_local_import(body: BuilderRunRequest):
+@router.post("/builder/run-local-import", response_model=LocalImportResponse)
+async def run_local_import(body: LocalImportRequest):
     try:
         result = await get_kg_builder_service().build_graph_from_input(
             dry_run=body.dry_run,

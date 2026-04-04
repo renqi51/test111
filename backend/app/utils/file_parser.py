@@ -1,16 +1,10 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 from pathlib import Path
+from typing import Any, Iterable
 
 
-@dataclass
-class ParsedInputDocument:
-    source_file: str
-    text: str
-
-
-def load_rule_context(rule_dir: Path) -> str:
+def read_rule_context(rule_dir: Path) -> str:
     supported = {".txt", ".md", ".json", ".yaml", ".yml"}
     if not rule_dir.exists():
         return ""
@@ -26,45 +20,35 @@ def load_rule_context(rule_dir: Path) -> str:
     return "\n\n".join(parts).strip()
 
 
-def load_input_documents(input_dir: Path) -> tuple[list[ParsedInputDocument], list[str]]:
-    supported_text = {".md", ".txt", ".yaml", ".yml"}
-    supported_pdf = {".pdf"}
-    docs: list[ParsedInputDocument] = []
-    failed: list[str] = []
+def iter_input_documents(input_dir: Path) -> Iterable[tuple[str, str]]:
     if not input_dir.exists():
-        return docs, failed
+        return
     for path in sorted([p for p in input_dir.iterdir() if p.is_file()]):
         ext = path.suffix.lower()
-        if ext in supported_text:
+        if ext == ".md":
             try:
                 text = path.read_text(encoding="utf-8").strip()
-            except Exception as exc:
-                failed.append(f"{path.name}: {str(exc)[:180]}")
+            except Exception:
                 continue
             if not text:
                 continue
-            docs.append(ParsedInputDocument(source_file=path.name, text=text))
+            yield path.name, text
             continue
-        if ext in supported_pdf:
+        if ext == ".pdf":
             try:
                 text = _extract_pdf_text(path)
-            except Exception as exc:
-                failed.append(f"{path.name}: {str(exc)[:180]}")
+            except Exception:
                 continue
             if not text.strip():
-                failed.append(f"{path.name}: empty_pdf_text")
                 continue
-            docs.append(ParsedInputDocument(source_file=path.name, text=text.strip()))
-    return docs, failed
+            yield path.name, text.strip()
 
 
 def chunk_text(
-    text: str,
-    source_file: str,
-    *,
+    text: str, *,
     chunk_size: int = 4000,
     chunk_overlap: int = 400,
-) -> list[dict[str, str | int]]:
+) -> list[dict[str, Any]]:
     clean = text.strip()
     if not clean:
         return []
@@ -79,7 +63,7 @@ def chunk_text(
         end = min(start + size, total)
         chunk = clean[start:end].strip()
         if chunk:
-            chunks.append({"source_file": source_file, "chunk_index": idx, "text": chunk})
+            chunks.append({"chunk_index": idx, "text": chunk})
             idx += 1
         if end >= total:
             break

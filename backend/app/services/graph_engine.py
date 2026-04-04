@@ -104,12 +104,22 @@ def merge_candidates(
     new_nodes: list[dict],
     new_edges: list[dict],
 ) -> tuple[int, int, int, int, list[dict], list[dict]]:
-    """Merge new nodes/edges; skip duplicate ids / duplicate edges."""
+    """Merge new nodes/edges; node duplicates are upserted with non-empty fields."""
     by_id = {n["id"]: dict(n) for n in nodes}
     added_n = skipped_n = 0
     for n in new_nodes:
         nid = n["id"]
         if nid in by_id:
+            # upsert: patch existing node with non-empty incoming fields
+            current = by_id[nid]
+            for field in ("label", "type", "description", "evidence_source", "en_identifier"):
+                val = n.get(field, "")
+                if isinstance(val, str):
+                    if val.strip():
+                        current[field] = val
+                elif val is not None:
+                    current[field] = val
+            by_id[nid] = current
             skipped_n += 1
             continue
         by_id[nid] = {
