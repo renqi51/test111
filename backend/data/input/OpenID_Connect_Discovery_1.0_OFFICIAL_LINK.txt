@@ -1,0 +1,3 @@
+Official HTML page: https://openid.net/specs/openid-connect-discovery-1_0.html
+Search-discovered final page: https://openid.net/specs/openid-connect-discovery-1_0-final.html
+Reason not bundled as PDF: official page is HTML-only in the accessible session path.

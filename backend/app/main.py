@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
 from app.utils.storage import init_runtime_from_seed_if_missing
-from app.api import graph, extract, extraction, exposure, reports, demo, experiments, skills, agent, mcp, probe
+from app.api import graph, extract, extraction, exposure, reports, demo, experiments, skills, agent, mcp, probe, builder
 from app.repositories.graph_repository import get_graph_repository
 
 app = FastAPI(title=settings.app_name, version="0.1.0")
@@ -36,6 +36,7 @@ app.include_router(skills.router, prefix="/api")
 app.include_router(agent.router, prefix="/api")
 app.include_router(mcp.router, prefix="/api")
 app.include_router(probe.router, prefix="/api")
+app.include_router(builder.router, prefix="/api")
 
 
 @app.get("/api/system/status")

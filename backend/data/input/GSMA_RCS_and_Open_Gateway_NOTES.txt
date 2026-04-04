@@ -1,0 +1,7 @@
+Identified official GSMA/GSMA Open Gateway resources (not fully downloadable in-session):
+- GSMA RCS Universal Profile Service Definition Document (RCC.71 v4.0)
+- GSMA RCC.07 RCS Advanced Communications Services and Client Specification page
+- GSMA RCS Universal Profile 3.0 / 3.1 specification pages
+- GSMA Open Gateway API descriptions page
+
+Observed issue: official page fetches returned 403 and the direct media PDF path surfaced by search returned 404 through the available tooling path.

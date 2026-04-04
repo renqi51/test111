@@ -52,6 +52,12 @@ class Settings(BaseSettings):
     extraction_prompt_override_path: str = str(RUNTIME_DIR / "prompt_overrides.json")
     extraction_enable_local_compatible_endpoint: bool = True
 
+    # Local KG builder
+    kg_input_dir: str = str(DATA_DIR / "input")
+    kg_rule_dir: str = str(DATA_DIR / "rule")
+    kg_chunk_size: int = 4000
+    kg_chunk_overlap: int = 400
+
     # Authorized lab: DNS + HTTPS reachability (see app/services/probe_service.py)
     probe_enabled: bool = True
     probe_mode: str = "allowlist"  # allowlist | open

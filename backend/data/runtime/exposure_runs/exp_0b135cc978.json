@@ -1,0 +1,416 @@
+{
+  "run_id": "exp_0b135cc978",
+  "created_at": "2026-04-04T10:14:00.458613+00:00",
+  "service": "VoWiFi",
+  "mcc": "460",
+  "mnc": "01",
+  "patterns": [
+    {
+      "pattern_id": "pat_vowifi_00",
+      "service": "VoWiFi",
+      "category": "fqdn",
+      "expression": "wlan.mnc001.mcc460.3gppnetwork.org",
+      "rationale": "Derived from 3GPP/GSMA naming pattern and graph relations.",
+      "evidence_docs": [
+        "3GPP TS 23.003"
+      ]
+    },
+    {
+      "pattern_id": "pat_vowifi_01",
+      "service": "VoWiFi",
+      "category": "fqdn",
+      "expression": "n3iwf.5gc.mnc001.mcc460.pub.3gppnetwork.org",
+      "rationale": "Derived from 3GPP/GSMA naming pattern and graph relations.",
+      "evidence_docs": [
+        "3GPP TS 24.502",
+        "3GPP TS 23.003"
+      ]
+    },
+    {
+      "pattern_id": "pat_vowifi_02",
+      "service": "VoWiFi",
+      "category": "fqdn",
+      "expression": "epdg.epc.mnc001.mcc460.pub.3gppnetwork.org",
+      "rationale": "Derived from 3GPP/GSMA naming pattern and graph relations.",
+      "evidence_docs": [
+        "3GPP TS 24.502",
+        "3GPP TS 23.003"
+      ]
+    }
+  ],
+  "candidates": [
+    {
+      "candidate_id": "cand_000",
+      "candidate_fqdn": "wlan.mnc001.mcc460.3gppnetwork.org",
+      "service": "VoWiFi",
+      "protocols": [
+        "IPsec",
+        "IKEv2",
+        "DNS"
+      ],
+      "network_functions": [
+        "N3IWF",
+        "ePDG"
+      ],
+      "confidence": 0.63,
+      "evidence": {
+        "evidence_docs": [
+          "3GPP TS 23.003"
+        ],
+        "graph_paths": [
+          "VoWiFi->uses_network_function->N3IWF",
+          "VoWiFi->uses_network_function->ePDG"
+        ],
+        "related_risks": [
+          "边界服务发现链可能泄露入口信息"
+        ],
+        "source_kind": [
+          "standard_pattern",
+          "graph_inference",
+          "probe_observation"
+        ]
+      },
+      "probe_status": {
+        "target": "wlan.mnc001.mcc460.3gppnetwork.org",
+        "host": "wlan.mnc001.mcc460.3gppnetwork.org",
+        "permitted": false,
+        "policy_reason": "allowlist_empty_configure_EXPOSURE_PROBE_ALLOWLIST_SUFFIXES",
+        "dns_ok": false,
+        "dns_addresses": [],
+        "https_ok": null,
+        "https_status": null,
+        "https_latency_ms": null,
+        "open_ports": [],
+        "open_udp_ports": [],
+        "service_hints": [],
+        "tls_subject": null,
+        "tls_error": null,
+        "error": null
+      }
+    },
+    {
+      "candidate_id": "cand_001",
+      "candidate_fqdn": "n3iwf.5gc.mnc001.mcc460.pub.3gppnetwork.org",
+      "service": "VoWiFi",
+      "protocols": [
+        "IPsec",
+        "IKEv2",
+        "DNS"
+      ],
+      "network_functions": [
+        "N3IWF"
+      ],
+      "confidence": 0.71,
+      "evidence": {
+        "evidence_docs": [
+          "3GPP TS 24.502",
+          "3GPP TS 23.003"
+        ],
+        "graph_paths": [
+          "VoWiFi->uses_network_function->N3IWF"
+        ],
+        "related_risks": [
+          "边界服务发现链可能泄露入口信息"
+        ],
+        "source_kind": [
+          "standard_pattern",
+          "graph_inference",
+          "probe_observation"
+        ]
+      },
+      "probe_status": {
+        "target": "n3iwf.5gc.mnc001.mcc460.pub.3gppnetwork.org",
+        "host": "n3iwf.5gc.mnc001.mcc460.pub.3gppnetwork.org",
+        "permitted": false,
+        "policy_reason": "allowlist_empty_configure_EXPOSURE_PROBE_ALLOWLIST_SUFFIXES",
+        "dns_ok": false,
+        "dns_addresses": [],
+        "https_ok": null,
+        "https_status": null,
+        "https_latency_ms": null,
+        "open_ports": [],
+        "open_udp_ports": [],
+        "service_hints": [],
+        "tls_subject": null,
+        "tls_error": null,
+        "error": null
+      }
+    },
+    {
+      "candidate_id": "cand_002",
+      "candidate_fqdn": "epdg.epc.mnc001.mcc460.pub.3gppnetwork.org",
+      "service": "VoWiFi",
+      "protocols": [
+        "IPsec",
+        "IKEv2",
+        "DNS"
+      ],
+      "network_functions": [
+        "ePDG"
+      ],
+      "confidence": 0.71,
+      "evidence": {
+        "evidence_docs": [
+          "3GPP TS 24.502",
+          "3GPP TS 23.003"
+        ],
+        "graph_paths": [
+          "VoWiFi->uses_network_function->ePDG"
+        ],
+        "related_risks": [
+          "边界服务发现链可能泄露入口信息"
+        ],
+        "source_kind": [
+          "standard_pattern",
+          "graph_inference",
+          "probe_observation"
+        ]
+      },
+      "probe_status": {
+        "target": "epdg.epc.mnc001.mcc460.pub.3gppnetwork.org",
+        "host": "epdg.epc.mnc001.mcc460.pub.3gppnetwork.org",
+        "permitted": false,
+        "policy_reason": "allowlist_empty_configure_EXPOSURE_PROBE_ALLOWLIST_SUFFIXES",
+        "dns_ok": false,
+        "dns_addresses": [],
+        "https_ok": null,
+        "https_status": null,
+        "https_latency_ms": null,
+        "open_ports": [],
+        "open_udp_ports": [],
+        "service_hints": [],
+        "tls_subject": null,
+        "tls_error": null,
+        "error": null
+      }
+    }
+  ],
+  "assessments": [
+    {
+      "candidate_id": "cand_000",
+      "risk_level": "medium",
+      "score": 0.5,
+      "summary": "The candidate host wlan.mnc001.mcc460.3gppnetwork.org is associated with VoWiFi services using network functions N3IWF and ePDG, with protocols IPsec, IKEv2, and DNS. The confidence in this association is moderate (0.63). Probe observations indicate the host is not permitted and DNS resolution failed, limiting direct exposure evidence. The related risk of boundary service discovery potentially leaking entry information is noted.",
+      "conservative_explanation": "Given the moderate confidence and the presence of critical network functions (N3IWF, ePDG) involved in VoWiFi, there is a potential risk of information leakage at the boundary service level. However, the lack of DNS resolution and no open ports observed reduces immediate exposure likelihood. The risk is assessed as medium due to the importance of these functions and the possibility of indirect information leakage.",
+      "attack_surface_notes": [
+        "Presence of N3IWF and ePDG network functions indicates critical VoWiFi boundary components.",
+        "Use of IPsec and IKEv2 protocols suggests secure tunneling but may still be targeted for boundary information leakage.",
+        "DNS resolution failure limits direct probing but does not eliminate potential exposure through other means."
+      ],
+      "missing_evidence": [
+        "Successful DNS resolution and address mapping",
+        "Open ports or services detected via probes",
+        "TLS certificate details or HTTPS status",
+        "Direct vulnerability or exploit evidence"
+      ],
+      "evidence_refs": [
+        "3GPP TS 23.003",
+        "VoWiFi->uses_network_function->N3IWF",
+        "VoWiFi->uses_network_function->ePDG",
+        "边界服务发现链可能泄露入口信息"
+      ],
+      "model_name": "gpt-4.1-mini-2025-04-14",
+      "fallback_used": false
+    },
+    {
+      "candidate_id": "cand_001",
+      "risk_level": "medium",
+      "score": 0.5,
+      "summary": "The candidate host n3iwf.5gc.mnc001.mcc460.pub.3gppnetwork.org is identified as an N3IWF network function supporting VoWiFi with protocols IPsec, IKEv2, and DNS. While standard references and graph inferences support its role, probe observations indicate no DNS resolution or open ports, and the host is not permitted by policy. The exposure of this boundary service could potentially leak entry point information, but direct exploitation evidence is lacking.",
+      "conservative_explanation": "Given the candidate's role as an N3IWF in VoWiFi and the presence of protocols that handle secure connections, there is an inherent risk of exposure if improperly configured. However, the lack of DNS resolution, open ports, and permitted access reduces immediate risk. The identified related risk of boundary service discovery leakage warrants caution, but without active service confirmation, the risk is assessed as medium.",
+      "attack_surface_notes": [
+        "N3IWF network function exposed with IPsec and IKEv2 protocols",
+        "Potential for boundary service discovery leakage of entry point information",
+        "No DNS resolution or open ports detected in probe observations"
+      ],
+      "missing_evidence": [
+        "Active service confirmation via open ports or successful protocol negotiation",
+        "TLS or HTTPS service status and certificate information",
+        "Further probe data to confirm actual exposure or vulnerabilities"
+      ],
+      "evidence_refs": [
+        "3GPP TS 24.502",
+        "3GPP TS 23.003",
+        "VoWiFi->uses_network_function->N3IWF",
+        "边界服务发现链可能泄露入口信息"
+      ],
+      "model_name": "gpt-4.1-mini-2025-04-14",
+      "fallback_used": false
+    },
+    {
+      "candidate_id": "cand_002",
+      "risk_level": "medium",
+      "score": 0.55,
+      "summary": "The candidate host epdg.epc.mnc001.mcc460.pub.3gppnetwork.org is identified as an ePDG network function supporting VoWiFi with protocols IPsec, IKEv2, and DNS. The confidence in this identification is moderate (0.71) based on standard 3GPP documentation and graph inference. Probe observations indicate the host is not permitted for exposure and DNS resolution failed, suggesting limited direct accessibility. However, the presence of an ePDG as a boundary service introduces a moderate risk of information leakage about network entry points.",
+      "conservative_explanation": "Given the candidate's role as an ePDG in the VoWiFi service chain and the associated protocols, there is an inherent exposure risk at the network boundary. Although probe results show no open ports or DNS resolution, the risk remains due to potential indirect information leakage and the critical role of ePDG in secure connectivity. The lack of DNS resolution and open ports reduces immediate exploitability but does not eliminate the risk of reconnaissance or misconfiguration.",
+      "attack_surface_notes": [
+        "ePDG acts as a boundary gateway for VoWiFi, potentially exposing entry point information.",
+        "Use of IPsec and IKEv2 protocols indicates secure tunnels but also targets for protocol-specific attacks if misconfigured.",
+        "DNS failure and no open ports observed reduce direct attack vectors but do not guarantee absence of exposure."
+      ],
+      "missing_evidence": [
+        "Detailed configuration and patch status of the ePDG host.",
+        "Results from active protocol-specific probes (e.g., IPsec/IKEv2 handshake attempts).",
+        "TLS certificate details or HTTPS service status to assess secure management interfaces."
+      ],
+      "evidence_refs": [
+        "3GPP TS 24.502",
+        "3GPP TS 23.003",
+        "VoWiFi->uses_network_function->ePDG",
+        "边界服务发现链可能泄露入口信息",
+        "probe observation: DNS failure and no open ports"
+      ],
+      "model_name": "gpt-4.1-mini-2025-04-14",
+      "fallback_used": false
+    }
+  ],
+  "attack_paths": [
+    {
+      "path_id": "path_vowifi_00",
+      "candidate_id": "cand_000",
+      "entrypoint": "wlan.mnc001.mcc460.3gppnetwork.org",
+      "pivots": [
+        "nf:N3IWF",
+        "nf:ePDG"
+      ],
+      "target_asset": "N3IWF",
+      "likelihood": 0.575,
+      "impact": "low",
+      "prerequisites": [
+        "authorized laboratory scope",
+        "target in probe allowlist/open policy"
+      ],
+      "evidence_refs": [
+        "3GPP TS 23.003",
+        "VoWiFi->uses_network_function->N3IWF",
+        "VoWiFi->uses_network_function->ePDG",
+        "边界服务发现链可能泄露入口信息"
+      ],
+      "validation_status": "hypothesis"
+    },
+    {
+      "path_id": "path_vowifi_01",
+      "candidate_id": "cand_001",
+      "entrypoint": "n3iwf.5gc.mnc001.mcc460.pub.3gppnetwork.org",
+      "pivots": [
+        "nf:N3IWF"
+      ],
+      "target_asset": "N3IWF",
+      "likelihood": 0.575,
+      "impact": "low",
+      "prerequisites": [
+        "authorized laboratory scope",
+        "target in probe allowlist/open policy"
+      ],
+      "evidence_refs": [
+        "3GPP TS 24.502",
+        "3GPP TS 23.003",
+        "VoWiFi->uses_network_function->N3IWF",
+        "边界服务发现链可能泄露入口信息"
+      ],
+      "validation_status": "hypothesis"
+    },
+    {
+      "path_id": "path_vowifi_02",
+      "candidate_id": "cand_002",
+      "entrypoint": "epdg.epc.mnc001.mcc460.pub.3gppnetwork.org",
+      "pivots": [
+        "nf:ePDG"
+      ],
+      "target_asset": "ePDG",
+      "likelihood": 0.5975,
+      "impact": "low",
+      "prerequisites": [
+        "authorized laboratory scope",
+        "target in probe allowlist/open policy"
+      ],
+      "evidence_refs": [
+        "3GPP TS 24.502",
+        "3GPP TS 23.003",
+        "VoWiFi->uses_network_function->ePDG",
+        "边界服务发现链可能泄露入口信息",
+        "probe observation: DNS failure and no open ports"
+      ],
+      "validation_status": "hypothesis"
+    }
+  ],
+  "probe_run": {
+    "run_id": "53e76092-0c7b-4175-a894-bb3d39c9960a",
+    "started_at": "2026-04-04T10:13:51.693780+00:00",
+    "finished_at": "2026-04-04T10:13:51.693780+00:00",
+    "probe_mode": "allowlist",
+    "results": [
+      {
+        "target": "wlan.mnc001.mcc460.3gppnetwork.org",
+        "host": "wlan.mnc001.mcc460.3gppnetwork.org",
+        "permitted": false,
+        "policy_reason": "allowlist_empty_configure_EXPOSURE_PROBE_ALLOWLIST_SUFFIXES",
+        "dns_ok": false,
+        "dns_addresses": [],
+        "https_ok": null,
+        "https_status": null,
+        "https_latency_ms": null,
+        "open_ports": [],
+        "open_udp_ports": [],
+        "service_hints": [],
+        "tls_subject": null,
+        "tls_error": null,
+        "error": null
+      },
+      {
+        "target": "n3iwf.5gc.mnc001.mcc460.pub.3gppnetwork.org",
+        "host": "n3iwf.5gc.mnc001.mcc460.pub.3gppnetwork.org",
+        "permitted": false,
+        "policy_reason": "allowlist_empty_configure_EXPOSURE_PROBE_ALLOWLIST_SUFFIXES",
+        "dns_ok": false,
+        "dns_addresses": [],
+        "https_ok": null,
+        "https_status": null,
+        "https_latency_ms": null,
+        "open_ports": [],
+        "open_udp_ports": [],
+        "service_hints": [],
+        "tls_subject": null,
+        "tls_error": null,
+        "error": null
+      },
+      {
+        "target": "epdg.epc.mnc001.mcc460.pub.3gppnetwork.org",
+        "host": "epdg.epc.mnc001.mcc460.pub.3gppnetwork.org",
+        "permitted": false,
+        "policy_reason": "allowlist_empty_configure_EXPOSURE_PROBE_ALLOWLIST_SUFFIXES",
+        "dns_ok": false,
+        "dns_addresses": [],
+        "https_ok": null,
+        "https_status": null,
+        "https_latency_ms": null,
+        "open_ports": [],
+        "open_udp_ports": [],
+        "service_hints": [],
+        "tls_subject": null,
+        "tls_error": null,
+        "error": null
+      }
+    ],
+    "summary": {
+      "total": 3,
+      "permitted": 0,
+      "dns_ok": 0,
+      "https_ok": 0,
+      "tcp_open": 0,
+      "udp_open": 0,
+      "sip_hint": 0,
+      "gtp_hint": 0,
+      "ipsec_hint": 0
+    }
+  },
+  "report_path": "data\\runtime\\exposure_runs\\exp_0b135cc978.md",
+  "summary": {
+    "total_candidates": 3,
+    "high_or_critical": 0,
+    "probe_reachable": 0,
+    "attack_paths": 3,
+    "validated_paths": 0,
+    "llm_used": true
+  }
+}

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any, Iterable
@@ -9,7 +11,6 @@ from neo4j import GraphDatabase, Driver
 from app.core.config import settings
 from app.utils import storage
 from app.services.trace_service import trace_service
-from app.services import graph_engine
 
 
 GraphDict = dict[str, list[dict[str, Any]]]
@@ -27,6 +28,12 @@ class GraphRepositoryBase(ABC):
 
     @abstractmethod
     def merge_nodes_edges(self, nodes: list[dict], edges: list[dict]) -> GraphDict: ...
+
+    @abstractmethod
+    def merge_nodes(self, nodes: list[dict]) -> int: ...
+
+    @abstractmethod
+    def merge_edges(self, edges: list[dict]) -> int: ...
 
     # Query helpers
     @abstractmethod
@@ -53,17 +60,65 @@ class FileGraphRepository(GraphRepositoryBase):
         storage.save_runtime_graph(payload)
 
     def merge_nodes_edges(self, nodes: list[dict], edges: list[dict]) -> GraphDict:
+        self.merge_nodes(nodes)
+        self.merge_edges(edges)
+        return self.get_graph()
+
+    def merge_nodes(self, nodes: list[dict]) -> int:
         current = self.get_graph()
-        added_n, added_e, skip_n, skip_e, merged_n, merged_e = graph_engine.merge_candidates(
-            current["nodes"],
-            current["edges"],
-            nodes,
-            edges,
-        )
-        _ = (added_n, added_e, skip_n, skip_e)  # stats currently unused at this level
-        out = {"nodes": merged_n, "edges": merged_e}
-        self.save_graph(out)
-        return out
+        node_map = {str(n.get("id")): dict(n) for n in current["nodes"] if n.get("id")}
+        merged_count = 0
+        for node in nodes:
+            node_id = str(node.get("id", "")).strip()
+            if not node_id:
+                continue
+            base = node_map.get(node_id, {"id": node_id})
+            base["label"] = str(node.get("label", base.get("label", node_id))).strip() or node_id
+            base["type"] = str(node.get("type", base.get("type", "Unknown"))).strip() or "Unknown"
+            base["description"] = str(node.get("description", base.get("description", ""))).strip()
+            base["evidence_source"] = str(
+                node.get("evidence_source", base.get("evidence_source", ""))
+            ).strip()
+            base["en_identifier"] = str(node.get("en_identifier", base.get("en_identifier", node_id))).strip()
+            base["properties"] = _merge_dict(base.get("properties"), node.get("properties"))
+            base["evidence"] = _merge_evidence(base.get("evidence"), node.get("evidence"))
+            node_map[node_id] = base
+            merged_count += 1
+        current["nodes"] = list(node_map.values())
+        self.save_graph(current)
+        return merged_count
+
+    def merge_edges(self, edges: list[dict]) -> int:
+        current = self.get_graph()
+        node_ids = {str(n.get("id")) for n in current["nodes"] if n.get("id")}
+        edge_map: dict[tuple[str, str, str], dict[str, Any]] = {}
+        for edge in current["edges"]:
+            key = (
+                str(edge.get("source", "")).strip(),
+                str(edge.get("target", "")).strip(),
+                str(edge.get("interaction", "")).strip(),
+            )
+            if not key[0] or not key[1] or not key[2]:
+                continue
+            edge_map[key] = dict(edge)
+        merged_count = 0
+        for edge in edges:
+            source = str(edge.get("source", "")).strip()
+            target = str(edge.get("target", "")).strip()
+            interaction = str(edge.get("interaction", "")).strip()
+            if not source or not target or not interaction:
+                continue
+            if source not in node_ids or target not in node_ids:
+                continue
+            key = (source, target, interaction)
+            base = edge_map.get(key, {"source": source, "target": target, "interaction": interaction})
+            base["properties"] = _merge_dict(base.get("properties"), edge.get("properties"))
+            base["evidence"] = _merge_evidence(base.get("evidence"), edge.get("evidence"))
+            edge_map[key] = base
+            merged_count += 1
+        current["edges"] = list(edge_map.values())
+        self.save_graph(current)
+        return merged_count
 
     def get_node(self, node_id: str) -> dict | None:
         g = self.get_graph()
@@ -124,18 +179,25 @@ class Neo4jGraphRepository(GraphRepositoryBase):
             rec["n"]
             for rec in self._run(
                 "MATCH (n:Entity) RETURN {id:n.id,label:n.label,type:n.type,description:n.description,"
-                "evidence_source:n.evidence_source,en_identifier:n.en_identifier} AS n"
+                "evidence_source:n.evidence_source,en_identifier:n.en_identifier,properties_json:n.properties_json,"
+                "evidence_json:n.evidence_json} AS n"
             )
         ]
+        for node in nodes:
+            node["properties"] = _json_loads_dict(node.pop("properties_json", ""))
+            node["evidence"] = _json_loads_list(node.pop("evidence_json", ""))
         edges = [
             {
                 "source": rec["source"],
                 "target": rec["target"],
                 "interaction": rec["interaction"],
+                "properties": _json_loads_dict(rec.get("properties_json", "")),
+                "evidence": _json_loads_list(rec.get("evidence_json", "")),
             }
             for rec in self._run(
                 "MATCH (a:Entity)-[r]->(b:Entity) "
-                "RETURN a.id AS source, b.id AS target, type(r) AS interaction"
+                "RETURN a.id AS source, b.id AS target, type(r) AS interaction, "
+                "r.properties_json AS properties_json, r.evidence_json AS evidence_json"
             )
         ]
         return {"nodes": nodes, "edges": edges}
@@ -147,58 +209,102 @@ class Neo4jGraphRepository(GraphRepositoryBase):
         self.merge_nodes_edges(payload["nodes"], payload["edges"])
 
     def merge_nodes_edges(self, nodes: list[dict], edges: list[dict]) -> GraphDict:
-        with self._driver.session() as sess:
-            # basic uniqueness on :Entity(id)
-            sess.run("CREATE CONSTRAINT IF NOT EXISTS FOR (e:Entity) REQUIRE e.id IS UNIQUE")
+        self.merge_nodes(nodes)
+        self.merge_edges(edges)
+        return self.get_graph()
 
-            for n in nodes:
-                props = {
-                    "id": n["id"],
-                    "label": n.get("label", n["id"]),
-                    "type": n.get("type", "Unknown"),
-                    "description": n.get("description", ""),
-                    "evidence_source": n.get("evidence_source", ""),
-                    "en_identifier": n.get("en_identifier", ""),
-                }
-                # Neo4j label syntax should be `:Entity:Service` (no double-colon).
-                # We build label segments without leading colons, then format as `e:{labels}`.
+    def merge_nodes(self, nodes: list[dict]) -> int:
+        with self._driver.session() as sess:
+            sess.run("CREATE CONSTRAINT IF NOT EXISTS FOR (e:Entity) REQUIRE e.id IS UNIQUE")
+            merged_count = 0
+            for node in nodes:
+                node_id = str(node.get("id", "")).strip()
+                if not node_id:
+                    continue
+                existing = list(
+                    sess.run(
+                        "MATCH (e:Entity {id:$id}) "
+                        "RETURN e.properties_json AS properties_json, e.evidence_json AS evidence_json",
+                        id=node_id,
+                    )
+                )
+                existing_props = _json_loads_dict(existing[0]["properties_json"]) if existing else {}
+                existing_evidence = _json_loads_list(existing[0]["evidence_json"]) if existing else []
+                merged_props = _merge_dict(existing_props, node.get("properties"))
+                merged_evidence = _merge_evidence(existing_evidence, node.get("evidence"))
                 labels = "Entity"
-                extra_label = n.get("type")
+                extra_label = _sanitize_neo4j_label(str(node.get("type", "Unknown")).strip() or "Unknown")
                 if extra_label:
                     labels = f"{labels}:{extra_label}"
                 sess.run(
                     f"MERGE (e:{labels} {{id:$id}}) "
                     "SET e.label=$label, e.type=$type, e.description=$description, "
-                    "e.evidence_source=$evidence_source, e.en_identifier=$en_identifier",
-                    **props,
+                    "e.evidence_source=$evidence_source, e.en_identifier=$en_identifier, "
+                    "e.properties_json=$properties_json, e.evidence_json=$evidence_json",
+                    id=node_id,
+                    label=str(node.get("label", node_id)).strip() or node_id,
+                    type=str(node.get("type", "Unknown")).strip() or "Unknown",
+                    description=str(node.get("description", "")).strip(),
+                    evidence_source=str(node.get("evidence_source", "")).strip(),
+                    en_identifier=str(node.get("en_identifier", node_id)).strip(),
+                    properties_json=json.dumps(merged_props, ensure_ascii=False),
+                    evidence_json=json.dumps(merged_evidence, ensure_ascii=False),
                 )
+                merged_count += 1
+        return merged_count
 
-            for e in edges:
-                itype = e.get("interaction", "")
-                if not itype:
+    def merge_edges(self, edges: list[dict]) -> int:
+        with self._driver.session() as sess:
+            merged_count = 0
+            for edge in edges:
+                source = str(edge.get("source", "")).strip()
+                target = str(edge.get("target", "")).strip()
+                interaction = str(edge.get("interaction", "")).strip()
+                if not source or not target or not interaction:
                     continue
-                # Dedup via MERGE
+                relation = interaction.replace("`", "_")
+                existing = list(
+                    sess.run(
+                        "MATCH (a:Entity {id:$source})-[r]->(b:Entity {id:$target}) "
+                        "WHERE type(r) = $rel_type "
+                        "RETURN r.properties_json AS properties_json, r.evidence_json AS evidence_json",
+                        source=source,
+                        target=target,
+                        rel_type=relation,
+                    )
+                )
+                existing_props = _json_loads_dict(existing[0]["properties_json"]) if existing else {}
+                existing_evidence = _json_loads_list(existing[0]["evidence_json"]) if existing else []
+                merged_props = _merge_dict(existing_props, edge.get("properties"))
+                merged_evidence = _merge_evidence(existing_evidence, edge.get("evidence"))
                 sess.run(
                     "MATCH (a:Entity {id:$source}), (b:Entity {id:$target}) "
-                    f"MERGE (a)-[r:`{itype}`]->(b)",
-                    source=e["source"],
-                    target=e["target"],
+                    f"MERGE (a)-[r:`{relation}`]->(b) "
+                    "SET r.properties_json=$properties_json, r.evidence_json=$evidence_json",
+                    source=source,
+                    target=target,
+                    properties_json=json.dumps(merged_props, ensure_ascii=False),
+                    evidence_json=json.dumps(merged_evidence, ensure_ascii=False),
                 )
-
-        return self.get_graph()
+                merged_count += 1
+        return merged_count
 
     def get_node(self, node_id: str) -> dict | None:
         recs = list(
             self._run(
                 "MATCH (n:Entity {id:$id}) "
                 "RETURN {id:n.id,label:n.label,type:n.type,description:n.description,"
-                "evidence_source:n.evidence_source,en_identifier:n.en_identifier} AS n",
+                "evidence_source:n.evidence_source,en_identifier:n.en_identifier,properties_json:n.properties_json,"
+                "evidence_json:n.evidence_json} AS n",
                 id=node_id,
             )
         )
         if not recs:
             return None
-        return recs[0]["n"]
+        node = recs[0]["n"]
+        node["properties"] = _json_loads_dict(node.pop("properties_json", ""))
+        node["evidence"] = _json_loads_list(node.pop("evidence_json", ""))
+        return node
 
     def neighbors(self, node_id: str, depth: int = 1) -> GraphDict:
         depth = max(1, min(depth, 3))
@@ -207,23 +313,30 @@ class Neo4jGraphRepository(GraphRepositoryBase):
             for rec in self._run(
                 "MATCH (c:Entity {id:$id})-[*1..$depth]-(n:Entity) "
                 "RETURN DISTINCT {id:n.id,label:n.label,type:n.type,description:n.description,"
-                "evidence_source:n.evidence_source,en_identifier:n.en_identifier} AS n",
+                "evidence_source:n.evidence_source,en_identifier:n.en_identifier,properties_json:n.properties_json,"
+                "evidence_json:n.evidence_json} AS n",
                 id=node_id,
                 depth=depth,
             )
         ]
+        for node in nodes:
+            node["properties"] = _json_loads_dict(node.pop("properties_json", ""))
+            node["evidence"] = _json_loads_list(node.pop("evidence_json", ""))
         edges = [
             {
                 "source": rec["source"],
                 "target": rec["target"],
                 "interaction": rec["interaction"],
+                "properties": _json_loads_dict(rec.get("properties_json", "")),
+                "evidence": _json_loads_list(rec.get("evidence_json", "")),
             }
             for rec in self._run(
                 "MATCH (c:Entity {id:$id})-[*1..$depth]-(n:Entity) "
                 "WITH collect(DISTINCT n) + c AS ns "
                 "UNWIND ns AS a UNWIND ns AS b "
                 "MATCH (a)-[r]->(b) "
-                "RETURN DISTINCT a.id AS source, b.id AS target, type(r) AS interaction",
+                "RETURN DISTINCT a.id AS source, b.id AS target, type(r) AS interaction, "
+                "r.properties_json AS properties_json, r.evidence_json AS evidence_json",
                 id=node_id,
                 depth=depth,
             )
@@ -360,4 +473,64 @@ def get_graph_repository() -> GraphRepositoryBase:
     else:
         _repo = FileGraphRepository()
     return _repo
+
+
+def _json_loads_dict(raw: str | None) -> dict[str, Any]:
+    if not raw:
+        return {}
+    try:
+        obj = json.loads(raw)
+    except Exception:  # noqa: BLE001
+        return {}
+    return obj if isinstance(obj, dict) else {}
+
+
+def _json_loads_list(raw: str | None) -> list[dict[str, Any]]:
+    if not raw:
+        return []
+    try:
+        obj = json.loads(raw)
+    except Exception:  # noqa: BLE001
+        return []
+    return [x for x in obj if isinstance(x, dict)] if isinstance(obj, list) else []
+
+
+def _merge_dict(base: dict[str, Any] | None, patch: dict[str, Any] | None) -> dict[str, Any]:
+    out = dict(base or {})
+    for key, value in (patch or {}).items():
+        if isinstance(out.get(key), dict) and isinstance(value, dict):
+            out[key] = _merge_dict(out.get(key), value)
+            continue
+        out[key] = value
+    return out
+
+
+def _merge_evidence(
+    left: list[dict[str, Any]] | None,
+    right: list[dict[str, Any]] | None,
+) -> list[dict[str, Any]]:
+    merged: list[dict[str, Any]] = []
+    seen: set[tuple[str, int, str]] = set()
+    for item in (left or []) + (right or []):
+        if not isinstance(item, dict):
+            continue
+        sf = str(item.get("source_file", "")).strip()
+        ci = item.get("chunk_index", -1)
+        try:
+            chunk_idx = int(ci)
+        except Exception:  # noqa: BLE001
+            chunk_idx = -1
+        quote = str(item.get("quote", "")).strip()
+        key = (sf, chunk_idx, quote)
+        if key in seen:
+            continue
+        seen.add(key)
+        merged.append({"source_file": sf, "chunk_index": chunk_idx, "quote": quote})
+    return merged
+
+
+def _sanitize_neo4j_label(value: str) -> str:
+    clean = re.sub(r"[^A-Za-z0-9_]", "_", value or "")
+    clean = re.sub(r"_+", "_", clean).strip("_")
+    return clean or "Unknown"
 
