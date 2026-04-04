@@ -1,0 +1,540 @@
+{
+  "run_id": "run_33bceb99f9",
+  "created_at": "2026-04-04T05:40:01.732973+00:00",
+  "request": {
+    "text": "UE moves from idle to registered then connected in IMS SIP flow. SIP REGISTER and 200 OK indicate transition.",
+    "title": "",
+    "source_type": "text",
+    "scenario_hint": "IMS",
+    "budget_mode": "default",
+    "high_precision": false,
+    "metadata": {}
+  },
+  "document_input": {
+    "document_id": "doc_7212b4d856",
+    "title": "Untitled standard fragment",
+    "source_type": "text",
+    "raw_text": "UE moves from idle to registered then connected in IMS SIP flow. SIP REGISTER and 200 OK indicate transition.",
+    "metadata": {}
+  },
+  "evidence_pack": {
+    "pack_id": "pack_8795813b66",
+    "query": "Untitled standard fragment",
+    "document_id": "doc_7212b4d856",
+    "scenario_hint": "IMS",
+    "items": [
+      {
+        "evidence_id": "ev_000_doc_7212b4d856_c000",
+        "chunk_id": "doc_7212b4d856_c000",
+        "document_id": "doc_7212b4d856",
+        "heading": "",
+        "text": "UE moves from idle to registered then connected in IMS SIP flow. SIP REGISTER and 200 OK indicate transition.",
+        "relevance_score": 0.1091,
+        "source_locator": {
+          "section_id": "s1",
+          "char_start": 0,
+          "char_end": 109
+        },
+        "tags": [
+          "IMS"
+        ]
+      }
+    ],
+    "retrieval_trace": [
+      {
+        "strategy": "keyword_overlap",
+        "top_k": 10,
+        "total_chunks": 1
+      }
+    ],
+    "created_at": "2026-04-04T05:39:40.581120"
+  },
+  "worker_results": [
+    {
+      "run_id": "run_33bceb99f9",
+      "worker_name": "worker_a",
+      "extraction_mode": "conservative",
+      "states": [
+        {
+          "temp_id": "state_1",
+          "name": "idle",
+          "normalized_name": "idle",
+          "description": "UE is in idle state",
+          "state_type": "UE state",
+          "confidence": 1.0,
+          "evidence_ids": [
+            "ev_000_doc_7212b4d856_c000"
+          ],
+          "attributes": {}
+        },
+        {
+          "temp_id": "state_2",
+          "name": "registered",
+          "normalized_name": "registered",
+          "description": "UE is registered in IMS",
+          "state_type": "UE state",
+          "confidence": 1.0,
+          "evidence_ids": [
+            "ev_000_doc_7212b4d856_c000"
+          ],
+          "attributes": {}
+        },
+        {
+          "temp_id": "state_3",
+          "name": "connected",
+          "normalized_name": "connected",
+          "description": "UE is connected in IMS SIP flow",
+          "state_type": "UE state",
+          "confidence": 1.0,
+          "evidence_ids": [
+            "ev_000_doc_7212b4d856_c000"
+          ],
+          "attributes": {}
+        }
+      ],
+      "transitions": [
+        {
+          "temp_id": "trans_1",
+          "from_state": "state_1",
+          "to_state": "state_2",
+          "trigger": "SIP REGISTER",
+          "guard": "",
+          "action": "",
+          "confidence": 1.0,
+          "evidence_ids": [
+            "ev_000_doc_7212b4d856_c000"
+          ],
+          "attributes": {}
+        },
+        {
+          "temp_id": "trans_2",
+          "from_state": "state_2",
+          "to_state": "state_3",
+          "trigger": "200 OK",
+          "guard": "",
+          "action": "",
+          "confidence": 1.0,
+          "evidence_ids": [
+            "ev_000_doc_7212b4d856_c000"
+          ],
+          "attributes": {}
+        }
+      ],
+      "entities": [],
+      "assumptions": [],
+      "open_questions": [],
+      "confidence_summary": {
+        "avg_state_conf": 1.0,
+        "avg_transition_conf": 1.0
+      },
+      "raw_response": {
+        "engine": "llm",
+        "worker_prompt": "You are Worker A (conservative extraction).\nExtract only evidence-grounded states/transitions from evidence pack.\nEvery state/transition must carry evidence_ids.\nOutput JSON with fields: states, transitions, assumptions, open_questions.",
+        "llm_raw": {
+          "states": [
+            {
+              "temp_id": "state_1",
+              "name": "idle",
+              "normalized_name": "idle",
+              "description": "UE is in idle state",
+              "state_type": "UE state",
+              "confidence": 1.0,
+              "evidence_ids": [
+                "ev_000_doc_7212b4d856_c000"
+              ],
+              "attributes": {}
+            },
+            {
+              "temp_id": "state_2",
+              "name": "registered",
+              "normalized_name": "registered",
+              "description": "UE is registered in IMS",
+              "state_type": "UE state",
+              "confidence": 1.0,
+              "evidence_ids": [
+                "ev_000_doc_7212b4d856_c000"
+              ],
+              "attributes": {}
+            },
+            {
+              "temp_id": "state_3",
+              "name": "connected",
+              "normalized_name": "connected",
+              "description": "UE is connected in IMS SIP flow",
+              "state_type": "UE state",
+              "confidence": 1.0,
+              "evidence_ids": [
+                "ev_000_doc_7212b4d856_c000"
+              ],
+              "attributes": {}
+            }
+          ],
+          "transitions": [
+            {
+              "temp_id": "trans_1",
+              "from_state": "state_1",
+              "to_state": "state_2",
+              "trigger": "SIP REGISTER",
+              "guard": null,
+              "action": null,
+              "confidence": 1.0,
+              "evidence_ids": [
+                "ev_000_doc_7212b4d856_c000"
+              ],
+              "attributes": {}
+            },
+            {
+              "temp_id": "trans_2",
+              "from_state": "state_2",
+              "to_state": "state_3",
+              "trigger": "200 OK",
+              "guard": null,
+              "action": null,
+              "confidence": 1.0,
+              "evidence_ids": [
+                "ev_000_doc_7212b4d856_c000"
+              ],
+              "attributes": {}
+            }
+          ],
+          "assumptions": [],
+          "open_questions": []
+        }
+      },
+      "evidence_pack_id": "pack_8795813b66",
+      "prompt_version": "v1",
+      "model_name": "gpt-4.1-mini-2025-04-14",
+      "timing_ms": 7663,
+      "token_usage": {
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0
+      }
+    },
+    {
+      "run_id": "run_33bceb99f9",
+      "worker_name": "worker_b",
+      "extraction_mode": "structural",
+      "states": [
+        {
+          "temp_id": "state_1",
+          "name": "Idle",
+          "normalized_name": "idle",
+          "description": "The UE is in an idle state, not registered with the IMS network.",
+          "state_type": "initial",
+          "confidence": 0.9,
+          "evidence_ids": [
+            "ev_000_doc_7212b4d856_c000"
+          ],
+          "attributes": {}
+        },
+        {
+          "temp_id": "state_2",
+          "name": "Registered",
+          "normalized_name": "registered",
+          "description": "The UE has sent a SIP REGISTER request and received a 200 OK response, indicating successful registration with the IMS network.",
+          "state_type": "intermediate",
+          "confidence": 0.9,
+          "evidence_ids": [
+            "ev_000_doc_7212b4d856_c000"
+          ],
+          "attributes": {}
+        },
+        {
+          "temp_id": "state_3",
+          "name": "Connected",
+          "normalized_name": "connected",
+          "description": "The UE is connected in the IMS SIP flow after registration.",
+          "state_type": "final",
+          "confidence": 0.8,
+          "evidence_ids": [
+            "ev_000_doc_7212b4d856_c000"
+          ],
+          "attributes": {}
+        }
+      ],
+      "transitions": [
+        {
+          "temp_id": "trans_1",
+          "from_state": "state_1",
+          "to_state": "state_2",
+          "trigger": "SIP REGISTER",
+          "guard": "",
+          "action": "Send SIP REGISTER request",
+          "confidence": 0.9,
+          "evidence_ids": [
+            "ev_000_doc_7212b4d856_c000"
+          ],
+          "attributes": {}
+        },
+        {
+          "temp_id": "trans_2",
+          "from_state": "state_2",
+          "to_state": "state_3",
+          "trigger": "200 OK",
+          "guard": "",
+          "action": "Receive 200 OK response",
+          "confidence": 0.9,
+          "evidence_ids": [
+            "ev_000_doc_7212b4d856_c000"
+          ],
+          "attributes": {}
+        }
+      ],
+      "entities": [],
+      "assumptions": [],
+      "open_questions": [
+        "Are there any intermediate states or error states between Registered and Connected?",
+        "What triggers the transition from Connected back to Idle or Registered?",
+        "Are there any timeout or failure conditions during registration or connection?"
+      ],
+      "confidence_summary": {
+        "avg_state_conf": 0.867,
+        "avg_transition_conf": 0.9
+      },
+      "raw_response": {
+        "engine": "llm",
+        "worker_prompt": "You are Worker B (structural induction).\nUse the same evidence pack to produce a more complete state machine.\nDo not hallucinate: inferred items must still attach evidence_ids and uncertainty notes.\nOutput JSON with fields: states, transitions, assumptions, open_questions.",
+        "llm_raw": {
+          "states": [
+            {
+              "temp_id": "state_1",
+              "name": "Idle",
+              "normalized_name": "idle",
+              "description": "The UE is in an idle state, not registered with the IMS network.",
+              "state_type": "initial",
+              "confidence": 0.9,
+              "evidence_ids": [
+                "ev_000_doc_7212b4d856_c000"
+              ],
+              "attributes": {}
+            },
+            {
+              "temp_id": "state_2",
+              "name": "Registered",
+              "normalized_name": "registered",
+              "description": "The UE has sent a SIP REGISTER request and received a 200 OK response, indicating successful registration with the IMS network.",
+              "state_type": "intermediate",
+              "confidence": 0.9,
+              "evidence_ids": [
+                "ev_000_doc_7212b4d856_c000"
+              ],
+              "attributes": {}
+            },
+            {
+              "temp_id": "state_3",
+              "name": "Connected",
+              "normalized_name": "connected",
+              "description": "The UE is connected in the IMS SIP flow after registration.",
+              "state_type": "final",
+              "confidence": 0.8,
+              "evidence_ids": [
+                "ev_000_doc_7212b4d856_c000"
+              ],
+              "attributes": {}
+            }
+          ],
+          "transitions": [
+            {
+              "temp_id": "trans_1",
+              "from_state": "state_1",
+              "to_state": "state_2",
+              "trigger": "SIP REGISTER",
+              "guard": null,
+              "action": "Send SIP REGISTER request",
+              "confidence": 0.9,
+              "evidence_ids": [
+                "ev_000_doc_7212b4d856_c000"
+              ],
+              "attributes": {}
+            },
+            {
+              "temp_id": "trans_2",
+              "from_state": "state_2",
+              "to_state": "state_3",
+              "trigger": "200 OK",
+              "guard": null,
+              "action": "Receive 200 OK response",
+              "confidence": 0.9,
+              "evidence_ids": [
+                "ev_000_doc_7212b4d856_c000"
+              ],
+              "attributes": {}
+            }
+          ],
+          "assumptions": [],
+          "open_questions": [
+            "Are there any intermediate states or error states between Registered and Connected?",
+            "What triggers the transition from Connected back to Idle or Registered?",
+            "Are there any timeout or failure conditions during registration or connection?"
+          ]
+        }
+      },
+      "evidence_pack_id": "pack_8795813b66",
+      "prompt_version": "v1",
+      "model_name": "gpt-4.1-mini-2025-04-14",
+      "timing_ms": 6709,
+      "token_usage": {
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0
+      }
+    }
+  ],
+  "judge": {
+    "judge_run_id": "judge_2e1d3da057",
+    "score_details": [
+      {
+        "worker_name": "worker_a",
+        "schema_validity_score": 1.0,
+        "evidence_alignment_score": 1.0,
+        "graph_consistency_score": 1.0,
+        "completeness_score": 0.75,
+        "conservativeness_score": 1.0,
+        "total_score": 0.955,
+        "comments": [
+          "LLM fallback triggered: Server disconnected without sending a response."
+        ]
+      },
+      {
+        "worker_name": "worker_b",
+        "schema_validity_score": 1.0,
+        "evidence_alignment_score": 1.0,
+        "graph_consistency_score": 1.0,
+        "completeness_score": 0.75,
+        "conservativeness_score": 1.0,
+        "total_score": 0.955,
+        "comments": []
+      }
+    ],
+    "recommended_worker": "worker_a",
+    "recommended_merge_strategy": "prefer_recommended_worker_if_conflict",
+    "conflict_set": [],
+    "needs_repair": false,
+    "repair_instruction": "",
+    "prompt_version": "v1",
+    "model_name": "gpt-4.1-mini",
+    "timing_ms": 13248,
+    "token_usage": {
+      "prompt_tokens": 0,
+      "completion_tokens": 0,
+      "total_tokens": 0
+    }
+  },
+  "repair": null,
+  "staging_graph": {
+    "run_id": "run_33bceb99f9",
+    "document_id": "doc_7212b4d856",
+    "nodes": [
+      {
+        "id": "state_1",
+        "label": "idle",
+        "type": "UE state",
+        "properties": {
+          "normalized_name": "idle",
+          "description": "UE is in idle state",
+          "confidence": 1.0,
+          "attributes": {}
+        },
+        "source_doc_id": "doc_7212b4d856",
+        "source_chunk_ids": [
+          "ev_000_doc_7212b4d856_c000"
+        ],
+        "source_worker": "worker_a",
+        "judge_score": 0.955,
+        "merge_status": "pending",
+        "created_at": "2026-04-04T05:40:01.671547"
+      },
+      {
+        "id": "state_2",
+        "label": "registered",
+        "type": "UE state",
+        "properties": {
+          "normalized_name": "registered",
+          "description": "UE is registered in IMS",
+          "confidence": 1.0,
+          "attributes": {}
+        },
+        "source_doc_id": "doc_7212b4d856",
+        "source_chunk_ids": [
+          "ev_000_doc_7212b4d856_c000"
+        ],
+        "source_worker": "worker_a",
+        "judge_score": 0.955,
+        "merge_status": "pending",
+        "created_at": "2026-04-04T05:40:01.671547"
+      },
+      {
+        "id": "state_3",
+        "label": "connected",
+        "type": "UE state",
+        "properties": {
+          "normalized_name": "connected",
+          "description": "UE is connected in IMS SIP flow",
+          "confidence": 1.0,
+          "attributes": {}
+        },
+        "source_doc_id": "doc_7212b4d856",
+        "source_chunk_ids": [
+          "ev_000_doc_7212b4d856_c000"
+        ],
+        "source_worker": "worker_a",
+        "judge_score": 0.955,
+        "merge_status": "pending",
+        "created_at": "2026-04-04T05:40:01.671547"
+      }
+    ],
+    "edges": [
+      {
+        "source": "state_1",
+        "target": "state_2",
+        "interaction": "SIP REGISTER",
+        "properties": {
+          "guard": "",
+          "action": "",
+          "confidence": 1.0,
+          "attributes": {}
+        },
+        "source_doc_id": "doc_7212b4d856",
+        "source_chunk_ids": [
+          "ev_000_doc_7212b4d856_c000"
+        ],
+        "source_worker": "worker_a",
+        "judge_score": 0.955,
+        "merge_status": "pending",
+        "created_at": "2026-04-04T05:40:01.671547"
+      },
+      {
+        "source": "state_2",
+        "target": "state_3",
+        "interaction": "200 OK",
+        "properties": {
+          "guard": "",
+          "action": "",
+          "confidence": 1.0,
+          "attributes": {}
+        },
+        "source_doc_id": "doc_7212b4d856",
+        "source_chunk_ids": [
+          "ev_000_doc_7212b4d856_c000"
+        ],
+        "source_worker": "worker_a",
+        "judge_score": 0.955,
+        "merge_status": "pending",
+        "created_at": "2026-04-04T05:40:01.671547"
+      }
+    ],
+    "metadata": {
+      "recommended_worker": "worker_a"
+    }
+  },
+  "audit": {
+    "ok": true,
+    "issues": []
+  },
+  "report_path": "E:\\workplace\\3gpp-open-exposure-demo\\backend\\data\\runtime\\reports\\run_33bceb99f9.md",
+  "trace_summary": {
+    "stage_count": 6,
+    "total_timing_ms": 27620
+  }
+}

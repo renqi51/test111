@@ -1,0 +1,32 @@
+{
+  "pack_id": "pack_1ef42ed21a",
+  "query": "Untitled standard fragment",
+  "document_id": "doc_75cc1d965a",
+  "scenario_hint": "IMS",
+  "items": [
+    {
+      "evidence_id": "ev_000_doc_75cc1d965a_c000",
+      "chunk_id": "doc_75cc1d965a_c000",
+      "document_id": "doc_75cc1d965a",
+      "heading": "",
+      "text": "IMS UE registers to network via SIP over IMS core and reaches registered state",
+      "relevance_score": 0.125,
+      "source_locator": {
+        "section_id": "s1",
+        "char_start": 0,
+        "char_end": 78
+      },
+      "tags": [
+        "IMS"
+      ]
+    }
+  ],
+  "retrieval_trace": [
+    {
+      "strategy": "keyword_overlap",
+      "top_k": 10,
+      "total_chunks": 1
+    }
+  ],
+  "created_at": "2026-04-04T05:04:31.343956"
+}

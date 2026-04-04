@@ -1,0 +1,893 @@
+{
+  "run_id": "run_dde2505aeb",
+  "created_at": "2026-04-04T05:55:52.748302+00:00",
+  "request": {
+    "text": "[3GPP/IMS Registration Flow Fragment - Demo]\n\nIn IMS architecture, the UE starts from an idle state before SIP registration.\nThe UE discovers the P-CSCF and sends an initial SIP REGISTER request.\nAfter authentication and authorization procedures are completed by IMS core functions (including interactions with I-CSCF and S-CSCF), the UE enters a registered state.\nIf policy checks and service profile retrieval succeed, the session control context can move to a connected/service-ready state.\nWhen registration expires or deregistration is triggered, the UE transitions from registered (or connected) back to idle.\n\nThe transition from idle to registered is triggered by SIP REGISTER signaling.\nA guard condition for entering registered is successful authentication.\nA guard condition for entering connected is successful policy and profile validation.\nA transition back to idle may be triggered by timeout, explicit deregistration, or authentication failure.\n\nRelated evidence terms in standards context:\n- IMS service architecture: 3GPP TS 23.228\n- SIP signaling procedures: 3GPP TS 24.229\n- Naming/reference context often aligned with 3GPP document conventions.",
+    "title": "",
+    "source_type": "text",
+    "scenario_hint": "IMS",
+    "budget_mode": "default",
+    "high_precision": false,
+    "metadata": {}
+  },
+  "document_input": {
+    "document_id": "doc_06c43e541a",
+    "title": "Untitled standard fragment",
+    "source_type": "text",
+    "raw_text": "[3GPP/IMS Registration Flow Fragment - Demo]\n\nIn IMS architecture, the UE starts from an idle state before SIP registration.\nThe UE discovers the P-CSCF and sends an initial SIP REGISTER request.\nAfter authentication and authorization procedures are completed by IMS core functions (including interactions with I-CSCF and S-CSCF), the UE enters a registered state.\nIf policy checks and service profile retrieval succeed, the session control context can move to a connected/service-ready state.\nWhen registration expires or deregistration is triggered, the UE transitions from registered (or connected) back to idle.\n\nThe transition from idle to registered is triggered by SIP REGISTER signaling.\nA guard condition for entering registered is successful authentication.\nA guard condition for entering connected is successful policy and profile validation.\nA transition back to idle may be triggered by timeout, explicit deregistration, or authentication failure.\n\nRelated evidence terms in standards context:\n- IMS service architecture: 3GPP TS 23.228\n- SIP signaling procedures: 3GPP TS 24.229\n- Naming/reference context often aligned with 3GPP document conventions.",
+    "metadata": {}
+  },
+  "evidence_pack": {
+    "pack_id": "pack_ad0af837b5",
+    "query": "Untitled standard fragment IMS [3GPP/IMS Registration Flow Fragment - Demo] In IMS architecture, the UE starts from an idle state before SIP registration. The UE discovers the P-CSCF and sends an initial SIP REGISTER request. After authentication and authorization procedures are completed by IMS core functions (including interact",
+    "document_id": "doc_06c43e541a",
+    "scenario_hint": "IMS",
+    "items": [
+      {
+        "evidence_id": "ev_000_doc_06c43e541a_c001",
+        "chunk_id": "doc_06c43e541a_c001",
+        "document_id": "doc_06c43e541a",
+        "heading": "",
+        "text": "In IMS architecture, the UE starts from an idle state before SIP registration.\nThe UE discovers the P-CSCF and sends an initial SIP REGISTER request.\nAfter authentication and authorization procedures are completed by IMS core functions (including interactions with I-CSCF and S-CSCF), the UE enters a registered state.\nIf policy checks and service profile retrieval succeed, the session control context can move to a connected/service-ready state.\nWhen registration expires or deregistration is triggered, the UE transitions from registered (or connected) back to idle.",
+        "relevance_score": 0.326,
+        "source_locator": {
+          "section_id": "s1",
+          "char_start": 46,
+          "char_end": 615
+        },
+        "tags": [
+          "IMS"
+        ]
+      },
+      {
+        "evidence_id": "ev_001_doc_06c43e541a_c000",
+        "chunk_id": "doc_06c43e541a_c000",
+        "document_id": "doc_06c43e541a",
+        "heading": "",
+        "text": "[3GPP/IMS Registration Flow Fragment - Demo]",
+        "relevance_score": 0.2853,
+        "source_locator": {
+          "section_id": "s1",
+          "char_start": 0,
+          "char_end": 44
+        },
+        "tags": [
+          "IMS"
+        ]
+      },
+      {
+        "evidence_id": "ev_002_doc_06c43e541a_c003",
+        "chunk_id": "doc_06c43e541a_c003",
+        "document_id": "doc_06c43e541a",
+        "heading": "",
+        "text": "Related evidence terms in standards context:\n- IMS service architecture: 3GPP TS 23.228\n- SIP signaling procedures: 3GPP TS 24.229\n- Naming/reference context often aligned with 3GPP document conventions.",
+        "relevance_score": 0.1113,
+        "source_locator": {
+          "section_id": "s2",
+          "char_start": 962,
+          "char_end": 1165
+        },
+        "tags": [
+          "IMS"
+        ]
+      },
+      {
+        "evidence_id": "ev_003_doc_06c43e541a_c002",
+        "chunk_id": "doc_06c43e541a_c002",
+        "document_id": "doc_06c43e541a",
+        "heading": "",
+        "text": "The transition from idle to registered is triggered by SIP REGISTER signaling.\nA guard condition for entering registered is successful authentication.\nA guard condition for entering connected is successful policy and profile validation.\nA transition back to idle may be triggered by timeout, explicit deregistration, or authentication failure.",
+        "relevance_score": 0.0953,
+        "source_locator": {
+          "section_id": "s1",
+          "char_start": 617,
+          "char_end": 960
+        },
+        "tags": [
+          "IMS"
+        ]
+      }
+    ],
+    "retrieval_trace": [
+      {
+        "strategy": "keyword_overlap",
+        "top_k": 10,
+        "total_chunks": 4
+      }
+    ],
+    "created_at": "2026-04-04T05:55:33.221563"
+  },
+  "worker_results": [
+    {
+      "run_id": "run_dde2505aeb",
+      "worker_name": "worker_a",
+      "extraction_mode": "conservative",
+      "states": [
+        {
+          "temp_id": "state_idle",
+          "name": "Idle",
+          "normalized_name": "idle",
+          "description": "The UE starts from an idle state before SIP registration in IMS architecture.",
+          "state_type": "initial",
+          "confidence": 0.9,
+          "evidence_ids": [
+            "ev_000_doc_06c43e541a_c001"
+          ],
+          "attributes": {}
+        },
+        {
+          "temp_id": "state_registered",
+          "name": "Registered",
+          "normalized_name": "registered",
+          "description": "State after successful SIP REGISTER signaling and completion of authentication and authorization procedures by IMS core functions.",
+          "state_type": "intermediate",
+          "confidence": 0.85,
+          "evidence_ids": [
+            "ev_000_doc_06c43e541a_c001",
+            "ev_003_doc_06c43e541a_c002"
+          ],
+          "attributes": {}
+        },
+        {
+          "temp_id": "state_connected",
+          "name": "Connected",
+          "normalized_name": "connected",
+          "description": "State after successful policy and profile validation following registration.",
+          "state_type": "intermediate",
+          "confidence": 0.8,
+          "evidence_ids": [
+            "ev_003_doc_06c43e541a_c002"
+          ],
+          "attributes": {}
+        }
+      ],
+      "transitions": [
+        {
+          "temp_id": "trans_idle_to_registered",
+          "from_state": "state_idle",
+          "to_state": "state_registered",
+          "trigger": "SIP REGISTER signaling",
+          "guard": "successful authentication",
+          "action": "IMS core functions complete authentication and authorization",
+          "confidence": 0.85,
+          "evidence_ids": [
+            "ev_000_doc_06c43e541a_c001",
+            "ev_003_doc_06c43e541a_c002"
+          ],
+          "attributes": {}
+        },
+        {
+          "temp_id": "trans_registered_to_connected",
+          "from_state": "state_registered",
+          "to_state": "state_connected",
+          "trigger": "policy and profile validation",
+          "guard": "successful policy and profile validation",
+          "action": "",
+          "confidence": 0.8,
+          "evidence_ids": [
+            "ev_003_doc_06c43e541a_c002"
+          ],
+          "attributes": {}
+        }
+      ],
+      "entities": [],
+      "assumptions": [],
+      "open_questions": [],
+      "confidence_summary": {
+        "avg_state_conf": 0.85,
+        "avg_transition_conf": 0.825
+      },
+      "raw_response": {
+        "engine": "llm",
+        "worker_prompt": "You are Worker A (conservative extraction).\nExtract only evidence-grounded states/transitions from evidence pack.\nEvery state/transition must carry evidence_ids.\nOutput JSON with fields: states, transitions, assumptions, open_questions.",
+        "llm_raw": {
+          "states": [
+            {
+              "temp_id": "state_idle",
+              "name": "Idle",
+              "normalized_name": "idle",
+              "description": "The UE starts from an idle state before SIP registration in IMS architecture.",
+              "state_type": "initial",
+              "confidence": 0.9,
+              "evidence_ids": [
+                "ev_000_doc_06c43e541a_c001"
+              ],
+              "attributes": {}
+            },
+            {
+              "temp_id": "state_registered",
+              "name": "Registered",
+              "normalized_name": "registered",
+              "description": "State after successful SIP REGISTER signaling and completion of authentication and authorization procedures by IMS core functions.",
+              "state_type": "intermediate",
+              "confidence": 0.85,
+              "evidence_ids": [
+                "ev_000_doc_06c43e541a_c001",
+                "ev_003_doc_06c43e541a_c002"
+              ],
+              "attributes": {}
+            },
+            {
+              "temp_id": "state_connected",
+              "name": "Connected",
+              "normalized_name": "connected",
+              "description": "State after successful policy and profile validation following registration.",
+              "state_type": "intermediate",
+              "confidence": 0.8,
+              "evidence_ids": [
+                "ev_003_doc_06c43e541a_c002"
+              ],
+              "attributes": {}
+            }
+          ],
+          "transitions": [
+            {
+              "temp_id": "trans_idle_to_registered",
+              "from_state": "state_idle",
+              "to_state": "state_registered",
+              "trigger": "SIP REGISTER signaling",
+              "guard": "successful authentication",
+              "action": "IMS core functions complete authentication and authorization",
+              "confidence": 0.85,
+              "evidence_ids": [
+                "ev_000_doc_06c43e541a_c001",
+                "ev_003_doc_06c43e541a_c002"
+              ],
+              "attributes": {}
+            },
+            {
+              "temp_id": "trans_registered_to_connected",
+              "from_state": "state_registered",
+              "to_state": "state_connected",
+              "trigger": "policy and profile validation",
+              "guard": "successful policy and profile validation",
+              "action": null,
+              "confidence": 0.8,
+              "evidence_ids": [
+                "ev_003_doc_06c43e541a_c002"
+              ],
+              "attributes": {}
+            }
+          ],
+          "assumptions": [],
+          "open_questions": []
+        }
+      },
+      "evidence_pack_id": "pack_ad0af837b5",
+      "prompt_version": "v1",
+      "model_name": "gpt-4.1-mini-2025-04-14",
+      "timing_ms": 8129,
+      "token_usage": {
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0
+      }
+    },
+    {
+      "run_id": "run_dde2505aeb",
+      "worker_name": "worker_b",
+      "extraction_mode": "structural",
+      "states": [
+        {
+          "temp_id": "state_idle",
+          "name": "Idle",
+          "normalized_name": "idle",
+          "description": "The UE starts in an idle state before SIP registration.",
+          "state_type": "initial",
+          "confidence": 0.9,
+          "evidence_ids": [
+            "ev_000_doc_06c43e541a_c001"
+          ],
+          "attributes": {}
+        },
+        {
+          "temp_id": "state_registered",
+          "name": "Registered",
+          "normalized_name": "registered",
+          "description": "The UE is registered after successful SIP REGISTER signaling and authentication.",
+          "state_type": "intermediate",
+          "confidence": 0.85,
+          "evidence_ids": [
+            "ev_000_doc_06c43e541a_c001",
+            "ev_003_doc_06c43e541a_c002"
+          ],
+          "attributes": {}
+        },
+        {
+          "temp_id": "state_connected",
+          "name": "Connected",
+          "normalized_name": "connected",
+          "description": "The UE is connected after successful policy and profile validation following registration.",
+          "state_type": "intermediate",
+          "confidence": 0.8,
+          "evidence_ids": [
+            "ev_003_doc_06c43e541a_c002"
+          ],
+          "attributes": {}
+        }
+      ],
+      "transitions": [
+        {
+          "temp_id": "trans_idle_to_registered",
+          "from_state": "state_idle",
+          "to_state": "state_registered",
+          "trigger": "SIP REGISTER signaling",
+          "guard": "successful authentication",
+          "action": "Send initial SIP REGISTER request and complete authentication and authorization procedures",
+          "confidence": 0.85,
+          "evidence_ids": [
+            "ev_000_doc_06c43e541a_c001",
+            "ev_003_doc_06c43e541a_c002"
+          ],
+          "attributes": {}
+        },
+        {
+          "temp_id": "trans_registered_to_connected",
+          "from_state": "state_registered",
+          "to_state": "state_connected",
+          "trigger": "policy and profile validation",
+          "guard": "successful policy and profile validation",
+          "action": "Validate policy and profile to enter connected state",
+          "confidence": 0.8,
+          "evidence_ids": [
+            "ev_003_doc_06c43e541a_c002"
+          ],
+          "attributes": {}
+        },
+        {
+          "temp_id": "trans_registered_to_idle",
+          "from_state": "state_registered",
+          "to_state": "state_idle",
+          "trigger": "deregistration or failure",
+          "guard": "",
+          "action": "Transition back to idle state",
+          "confidence": 0.7,
+          "evidence_ids": [
+            "ev_003_doc_06c43e541a_c002"
+          ],
+          "attributes": {}
+        }
+      ],
+      "entities": [],
+      "assumptions": [],
+      "open_questions": [
+        "What are the detailed triggers and conditions for transitioning from connected state back to registered or idle states?",
+        "Are there additional intermediate states between registered and connected states in the IMS registration flow?"
+      ],
+      "confidence_summary": {
+        "avg_state_conf": 0.85,
+        "avg_transition_conf": 0.783
+      },
+      "raw_response": {
+        "engine": "llm",
+        "worker_prompt": "You are Worker B (structural induction).\nUse the same evidence pack to produce a more complete state machine.\nDo not hallucinate: inferred items must still attach evidence_ids and uncertainty notes.\nOutput JSON with fields: states, transitions, assumptions, open_questions.",
+        "llm_raw": {
+          "states": [
+            {
+              "temp_id": "state_idle",
+              "name": "Idle",
+              "normalized_name": "idle",
+              "description": "The UE starts in an idle state before SIP registration.",
+              "state_type": "initial",
+              "confidence": 0.9,
+              "evidence_ids": [
+                "ev_000_doc_06c43e541a_c001"
+              ],
+              "attributes": {}
+            },
+            {
+              "temp_id": "state_registered",
+              "name": "Registered",
+              "normalized_name": "registered",
+              "description": "The UE is registered after successful SIP REGISTER signaling and authentication.",
+              "state_type": "intermediate",
+              "confidence": 0.85,
+              "evidence_ids": [
+                "ev_000_doc_06c43e541a_c001",
+                "ev_003_doc_06c43e541a_c002"
+              ],
+              "attributes": {}
+            },
+            {
+              "temp_id": "state_connected",
+              "name": "Connected",
+              "normalized_name": "connected",
+              "description": "The UE is connected after successful policy and profile validation following registration.",
+              "state_type": "intermediate",
+              "confidence": 0.8,
+              "evidence_ids": [
+                "ev_003_doc_06c43e541a_c002"
+              ],
+              "attributes": {}
+            }
+          ],
+          "transitions": [
+            {
+              "temp_id": "trans_idle_to_registered",
+              "from_state": "state_idle",
+              "to_state": "state_registered",
+              "trigger": "SIP REGISTER signaling",
+              "guard": "successful authentication",
+              "action": "Send initial SIP REGISTER request and complete authentication and authorization procedures",
+              "confidence": 0.85,
+              "evidence_ids": [
+                "ev_000_doc_06c43e541a_c001",
+                "ev_003_doc_06c43e541a_c002"
+              ],
+              "attributes": {}
+            },
+            {
+              "temp_id": "trans_registered_to_connected",
+              "from_state": "state_registered",
+              "to_state": "state_connected",
+              "trigger": "policy and profile validation",
+              "guard": "successful policy and profile validation",
+              "action": "Validate policy and profile to enter connected state",
+              "confidence": 0.8,
+              "evidence_ids": [
+                "ev_003_doc_06c43e541a_c002"
+              ],
+              "attributes": {}
+            },
+            {
+              "temp_id": "trans_registered_to_idle",
+              "from_state": "state_registered",
+              "to_state": "state_idle",
+              "trigger": "deregistration or failure",
+              "guard": null,
+              "action": "Transition back to idle state",
+              "confidence": 0.7,
+              "evidence_ids": [
+                "ev_003_doc_06c43e541a_c002"
+              ],
+              "attributes": {}
+            }
+          ],
+          "assumptions": [],
+          "open_questions": [
+            "What are the detailed triggers and conditions for transitioning from connected state back to registered or idle states?",
+            "Are there additional intermediate states between registered and connected states in the IMS registration flow?"
+          ]
+        }
+      },
+      "evidence_pack_id": "pack_ad0af837b5",
+      "prompt_version": "v1",
+      "model_name": "gpt-4.1-mini-2025-04-14",
+      "timing_ms": 7594,
+      "token_usage": {
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0
+      }
+    }
+  ],
+  "judge": {
+    "judge_run_id": "judge_327273baa9",
+    "score_details": [
+      {
+        "worker_name": "worker_a",
+        "schema_validity_score": 1.0,
+        "evidence_alignment_score": 0.8,
+        "graph_consistency_score": 0.9,
+        "completeness_score": 0.7,
+        "conservativeness_score": 0.9,
+        "total_score": 1.0,
+        "comments": [
+          "V",
+          "a",
+          "l",
+          "i",
+          "d",
+          " ",
+          "s",
+          "c",
+          "h",
+          "e",
+          "m",
+          "a",
+          ",",
+          " ",
+          "a",
+          "l",
+          "i",
+          "g",
+          "n",
+          "s",
+          " ",
+          "w",
+          "e",
+          "l",
+          "l",
+          " ",
+          "w",
+          "i",
+          "t",
+          "h",
+          " ",
+          "e",
+          "v",
+          "i",
+          "d",
+          "e",
+          "n",
+          "c",
+          "e",
+          " ",
+          "b",
+          "u",
+          "t",
+          " ",
+          "m",
+          "i",
+          "s",
+          "s",
+          "i",
+          "n",
+          "g",
+          " ",
+          "o",
+          "n",
+          "e",
+          " ",
+          "t",
+          "r",
+          "a",
+          "n",
+          "s",
+          "i",
+          "t",
+          "i",
+          "o",
+          "n",
+          " ",
+          "p",
+          "r",
+          "e",
+          "s",
+          "e",
+          "n",
+          "t",
+          " ",
+          "i",
+          "n",
+          " ",
+          "e",
+          "v",
+          "i",
+          "d",
+          "e",
+          "n",
+          "c",
+          "e",
+          ".",
+          " ",
+          "G",
+          "r",
+          "a",
+          "p",
+          "h",
+          " ",
+          "i",
+          "s",
+          " ",
+          "c",
+          "o",
+          "n",
+          "s",
+          "i",
+          "s",
+          "t",
+          "e",
+          "n",
+          "t",
+          " ",
+          "b",
+          "u",
+          "t",
+          " ",
+          "l",
+          "e",
+          "s",
+          "s",
+          " ",
+          "c",
+          "o",
+          "m",
+          "p",
+          "l",
+          "e",
+          "t",
+          "e",
+          " ",
+          "t",
+          "h",
+          "a",
+          "n",
+          " ",
+          "w",
+          "o",
+          "r",
+          "k",
+          "e",
+          "r",
+          "_",
+          "b",
+          "."
+        ]
+      },
+      {
+        "worker_name": "worker_b",
+        "schema_validity_score": 1.0,
+        "evidence_alignment_score": 1.0,
+        "graph_consistency_score": 1.0,
+        "completeness_score": 1.0,
+        "conservativeness_score": 0.9,
+        "total_score": 1.0,
+        "comments": [
+          "F",
+          "u",
+          "l",
+          "l",
+          "y",
+          " ",
+          "a",
+          "l",
+          "i",
+          "g",
+          "n",
+          "s",
+          " ",
+          "w",
+          "i",
+          "t",
+          "h",
+          " ",
+          "e",
+          "v",
+          "i",
+          "d",
+          "e",
+          "n",
+          "c",
+          "e",
+          ",",
+          " ",
+          "c",
+          "o",
+          "m",
+          "p",
+          "l",
+          "e",
+          "t",
+          "e",
+          " ",
+          "t",
+          "r",
+          "a",
+          "n",
+          "s",
+          "i",
+          "t",
+          "i",
+          "o",
+          "n",
+          " ",
+          "s",
+          "e",
+          "t",
+          ",",
+          " ",
+          "c",
+          "o",
+          "n",
+          "s",
+          "i",
+          "s",
+          "t",
+          "e",
+          "n",
+          "t",
+          " ",
+          "g",
+          "r",
+          "a",
+          "p",
+          "h",
+          ",",
+          " ",
+          "c",
+          "o",
+          "n",
+          "s",
+          "e",
+          "r",
+          "v",
+          "a",
+          "t",
+          "i",
+          "v",
+          "e",
+          " ",
+          "a",
+          "s",
+          "s",
+          "u",
+          "m",
+          "p",
+          "t",
+          "i",
+          "o",
+          "n",
+          "s",
+          "."
+        ]
+      }
+    ],
+    "recommended_worker": "worker_b",
+    "recommended_merge_strategy": "prefer_recommended_worker_if_conflict",
+    "conflict_set": [
+      {
+        "field_path": "transition_pairs",
+        "conflict_type": "missing_transition",
+        "description": "worker_a is missing the transition 'state_registered->state_idle:deregistration or failure' present in worker_b and evidence.",
+        "candidate_values": {
+          "raw": [
+            "state_idle->state_registered:SIP REGISTER signaling",
+            "state_registered->state_connected:policy and profile validation"
+          ]
+        },
+        "related_evidence_ids": [
+          "pack_ad0af837b5"
+        ],
+        "severity": "medium"
+      }
+    ],
+    "needs_repair": false,
+    "repair_instruction": "",
+    "prompt_version": "v1",
+    "model_name": "gpt-4.1-mini-2025-04-14",
+    "timing_ms": 10732,
+    "token_usage": {
+      "prompt_tokens": 0,
+      "completion_tokens": 0,
+      "total_tokens": 0
+    }
+  },
+  "repair": null,
+  "staging_graph": {
+    "run_id": "run_dde2505aeb",
+    "document_id": "doc_06c43e541a",
+    "nodes": [
+      {
+        "id": "state_idle",
+        "label": "Idle",
+        "type": "initial",
+        "properties": {
+          "normalized_name": "idle",
+          "description": "The UE starts in an idle state before SIP registration.",
+          "confidence": 0.9,
+          "attributes": {}
+        },
+        "source_doc_id": "doc_06c43e541a",
+        "source_chunk_ids": [
+          "ev_000_doc_06c43e541a_c001"
+        ],
+        "source_worker": "worker_b",
+        "judge_score": 1.0,
+        "merge_status": "pending",
+        "created_at": "2026-04-04T05:55:52.704375"
+      },
+      {
+        "id": "state_registered",
+        "label": "Registered",
+        "type": "intermediate",
+        "properties": {
+          "normalized_name": "registered",
+          "description": "The UE is registered after successful SIP REGISTER signaling and authentication.",
+          "confidence": 0.85,
+          "attributes": {}
+        },
+        "source_doc_id": "doc_06c43e541a",
+        "source_chunk_ids": [
+          "ev_000_doc_06c43e541a_c001",
+          "ev_003_doc_06c43e541a_c002"
+        ],
+        "source_worker": "worker_b",
+        "judge_score": 1.0,
+        "merge_status": "pending",
+        "created_at": "2026-04-04T05:55:52.704375"
+      },
+      {
+        "id": "state_connected",
+        "label": "Connected",
+        "type": "intermediate",
+        "properties": {
+          "normalized_name": "connected",
+          "description": "The UE is connected after successful policy and profile validation following registration.",
+          "confidence": 0.8,
+          "attributes": {}
+        },
+        "source_doc_id": "doc_06c43e541a",
+        "source_chunk_ids": [
+          "ev_003_doc_06c43e541a_c002"
+        ],
+        "source_worker": "worker_b",
+        "judge_score": 1.0,
+        "merge_status": "pending",
+        "created_at": "2026-04-04T05:55:52.704375"
+      }
+    ],
+    "edges": [
+      {
+        "source": "state_idle",
+        "target": "state_registered",
+        "interaction": "SIP REGISTER signaling",
+        "properties": {
+          "guard": "successful authentication",
+          "action": "Send initial SIP REGISTER request and complete authentication and authorization procedures",
+          "confidence": 0.85,
+          "attributes": {}
+        },
+        "source_doc_id": "doc_06c43e541a",
+        "source_chunk_ids": [
+          "ev_000_doc_06c43e541a_c001",
+          "ev_003_doc_06c43e541a_c002"
+        ],
+        "source_worker": "worker_b",
+        "judge_score": 1.0,
+        "merge_status": "pending",
+        "created_at": "2026-04-04T05:55:52.704375"
+      },
+      {
+        "source": "state_registered",
+        "target": "state_connected",
+        "interaction": "policy and profile validation",
+        "properties": {
+          "guard": "successful policy and profile validation",
+          "action": "Validate policy and profile to enter connected state",
+          "confidence": 0.8,
+          "attributes": {}
+        },
+        "source_doc_id": "doc_06c43e541a",
+        "source_chunk_ids": [
+          "ev_003_doc_06c43e541a_c002"
+        ],
+        "source_worker": "worker_b",
+        "judge_score": 1.0,
+        "merge_status": "pending",
+        "created_at": "2026-04-04T05:55:52.704375"
+      },
+      {
+        "source": "state_registered",
+        "target": "state_idle",
+        "interaction": "deregistration or failure",
+        "properties": {
+          "guard": "",
+          "action": "Transition back to idle state",
+          "confidence": 0.7,
+          "attributes": {}
+        },
+        "source_doc_id": "doc_06c43e541a",
+        "source_chunk_ids": [
+          "ev_003_doc_06c43e541a_c002"
+        ],
+        "source_worker": "worker_b",
+        "judge_score": 1.0,
+        "merge_status": "pending",
+        "created_at": "2026-04-04T05:55:52.704375"
+      }
+    ],
+    "metadata": {
+      "recommended_worker": "worker_b"
+    }
+  },
+  "audit": {
+    "ok": true,
+    "issues": []
+  },
+  "report_path": "E:\\workplace\\3gpp-open-exposure-demo\\backend\\data\\runtime\\reports\\run_dde2505aeb.md",
+  "trace_summary": {
+    "stage_count": 6,
+    "total_timing_ms": 26455
+  }
+}

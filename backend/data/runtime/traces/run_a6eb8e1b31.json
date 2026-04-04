@@ -1,0 +1,68 @@
+{
+  "run_id": "run_a6eb8e1b31",
+  "traces": [
+    {
+      "stage": "stage0_input",
+      "started_at": "2026-04-04T07:13:02.294798+00:00",
+      "finished_at": "2026-04-04T07:13:02.294798+00:00",
+      "summary": {
+        "document_id": "doc_98a965b6c0",
+        "source_type": "text"
+      },
+      "error": null
+    },
+    {
+      "stage": "stage1_preprocess",
+      "started_at": "2026-04-04T07:13:02.294798+00:00",
+      "finished_at": "2026-04-04T07:13:02.294798+00:00",
+      "summary": {
+        "chunk_count": 1
+      },
+      "error": null
+    },
+    {
+      "stage": "stage2_retrieval",
+      "started_at": "2026-04-04T07:13:02.294798+00:00",
+      "finished_at": "2026-04-04T07:13:02.295339+00:00",
+      "summary": {
+        "evidence_pack_id": "pack_586d9d5c2f",
+        "items": 1
+      },
+      "error": null
+    },
+    {
+      "stage": "stage3_workers",
+      "started_at": "2026-04-04T07:13:02.296950+00:00",
+      "finished_at": "2026-04-04T07:13:11.182444+00:00",
+      "summary": {
+        "workers": [
+          "worker_a",
+          "worker_b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "stage": "stage4_judge",
+      "started_at": "2026-04-04T07:13:11.182444+00:00",
+      "finished_at": "2026-04-04T07:13:19.277040+00:00",
+      "summary": {
+        "recommended_worker": "worker_b",
+        "needs_repair": false,
+        "conflicts": 0
+      },
+      "error": null
+    },
+    {
+      "stage": "stage6_staging_graph",
+      "started_at": "2026-04-04T07:13:19.277040+00:00",
+      "finished_at": "2026-04-04T07:13:19.277040+00:00",
+      "summary": {
+        "staging_nodes": 3,
+        "staging_edges": 2,
+        "audit_ok": true
+      },
+      "error": null
+    }
+  ]
+}

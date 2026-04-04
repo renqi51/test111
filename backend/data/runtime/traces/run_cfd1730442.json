@@ -1,0 +1,68 @@
+{
+  "run_id": "run_cfd1730442",
+  "traces": [
+    {
+      "stage": "stage0_input",
+      "started_at": "2026-04-04T05:24:30.436673+00:00",
+      "finished_at": "2026-04-04T05:24:30.436673+00:00",
+      "summary": {
+        "document_id": "doc_96a6109fa8",
+        "source_type": "text"
+      },
+      "error": null
+    },
+    {
+      "stage": "stage1_preprocess",
+      "started_at": "2026-04-04T05:24:30.436673+00:00",
+      "finished_at": "2026-04-04T05:24:30.437189+00:00",
+      "summary": {
+        "chunk_count": 1
+      },
+      "error": null
+    },
+    {
+      "stage": "stage2_retrieval",
+      "started_at": "2026-04-04T05:24:30.437189+00:00",
+      "finished_at": "2026-04-04T05:24:30.437189+00:00",
+      "summary": {
+        "evidence_pack_id": "pack_1f91a70481",
+        "items": 1
+      },
+      "error": null
+    },
+    {
+      "stage": "stage3_workers",
+      "started_at": "2026-04-04T05:24:30.441020+00:00",
+      "finished_at": "2026-04-04T05:24:30.442017+00:00",
+      "summary": {
+        "workers": [
+          "worker_a",
+          "worker_b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "stage": "stage4_judge",
+      "started_at": "2026-04-04T05:24:30.442017+00:00",
+      "finished_at": "2026-04-04T05:24:30.442017+00:00",
+      "summary": {
+        "recommended_worker": "worker_a",
+        "needs_repair": false,
+        "conflicts": 1
+      },
+      "error": null
+    },
+    {
+      "stage": "stage6_staging_graph",
+      "started_at": "2026-04-04T05:24:30.442017+00:00",
+      "finished_at": "2026-04-04T05:24:30.442017+00:00",
+      "summary": {
+        "staging_nodes": 3,
+        "staging_edges": 2,
+        "audit_ok": true
+      },
+      "error": null
+    }
+  ]
+}

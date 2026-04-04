@@ -1,0 +1,2 @@
+"""Retrieval plugin registry components."""
+

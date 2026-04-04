@@ -1,0 +1,125 @@
+{
+  "run_id": "run_c1ec181272",
+  "document_id": "doc_b4b39fd24c",
+  "nodes": [
+    {
+      "id": "state_idle",
+      "label": "idle",
+      "type": "normal",
+      "properties": {
+        "normalized_name": "idle",
+        "description": "User Equipment (UE) is in idle state in IMS architecture.",
+        "confidence": 0.8,
+        "attributes": {}
+      },
+      "source_doc_id": "doc_b4b39fd24c",
+      "source_chunk_ids": [
+        "ev_000_doc_b4b39fd24c_c000"
+      ],
+      "source_worker": "worker_a",
+      "judge_score": 1.0,
+      "merge_status": "pending",
+      "created_at": "2026-04-04T05:54:26.474410"
+    },
+    {
+      "id": "state_registered",
+      "label": "registered",
+      "type": "normal",
+      "properties": {
+        "normalized_name": "registered",
+        "description": "UE is registered in IMS architecture.",
+        "confidence": 0.8,
+        "attributes": {}
+      },
+      "source_doc_id": "doc_b4b39fd24c",
+      "source_chunk_ids": [
+        "ev_000_doc_b4b39fd24c_c000"
+      ],
+      "source_worker": "worker_a",
+      "judge_score": 1.0,
+      "merge_status": "pending",
+      "created_at": "2026-04-04T05:54:26.474410"
+    },
+    {
+      "id": "state_connected",
+      "label": "connected",
+      "type": "normal",
+      "properties": {
+        "normalized_name": "connected",
+        "description": "UE is connected in IMS architecture.",
+        "confidence": 0.8,
+        "attributes": {}
+      },
+      "source_doc_id": "doc_b4b39fd24c",
+      "source_chunk_ids": [
+        "ev_000_doc_b4b39fd24c_c000"
+      ],
+      "source_worker": "worker_a",
+      "judge_score": 1.0,
+      "merge_status": "pending",
+      "created_at": "2026-04-04T05:54:26.474410"
+    }
+  ],
+  "edges": [
+    {
+      "source": "state_idle",
+      "target": "state_registered",
+      "interaction": "SIP REGISTER and policy/profile validation",
+      "properties": {
+        "guard": "",
+        "action": "",
+        "confidence": 0.8,
+        "attributes": {}
+      },
+      "source_doc_id": "doc_b4b39fd24c",
+      "source_chunk_ids": [
+        "ev_000_doc_b4b39fd24c_c000"
+      ],
+      "source_worker": "worker_a",
+      "judge_score": 1.0,
+      "merge_status": "pending",
+      "created_at": "2026-04-04T05:54:26.474410"
+    },
+    {
+      "source": "state_registered",
+      "target": "state_connected",
+      "interaction": "state_transition",
+      "properties": {
+        "guard": "",
+        "action": "",
+        "confidence": 0.8,
+        "attributes": {}
+      },
+      "source_doc_id": "doc_b4b39fd24c",
+      "source_chunk_ids": [
+        "ev_000_doc_b4b39fd24c_c000"
+      ],
+      "source_worker": "worker_a",
+      "judge_score": 1.0,
+      "merge_status": "pending",
+      "created_at": "2026-04-04T05:54:26.474410"
+    },
+    {
+      "source": "state_connected",
+      "target": "state_idle",
+      "interaction": "deregistration",
+      "properties": {
+        "guard": "",
+        "action": "",
+        "confidence": 0.8,
+        "attributes": {}
+      },
+      "source_doc_id": "doc_b4b39fd24c",
+      "source_chunk_ids": [
+        "ev_000_doc_b4b39fd24c_c000"
+      ],
+      "source_worker": "worker_a",
+      "judge_score": 1.0,
+      "merge_status": "pending",
+      "created_at": "2026-04-04T05:54:26.474410"
+    }
+  ],
+  "metadata": {
+    "recommended_worker": "worker_a"
+  }
+}

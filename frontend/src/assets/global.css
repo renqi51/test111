@@ -1,0 +1,51 @@
+:root {
+  --bg-deep: #0b1220;
+  --bg-panel: #111b2e;
+  --bg-card: #152238;
+  --border: rgba(120, 160, 220, 0.18);
+  --text: #e8eefc;
+  --muted: #9db0d0;
+  --accent: #5b8cff;
+  --accent-2: #3dd6c6;
+  --danger: #f56c6c;
+  --shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+  color: var(--text);
+  background: var(--bg-deep);
+}
+
+html,
+body,
+#app {
+  height: 100%;
+  margin: 0;
+}
+
+a {
+  color: var(--accent);
+}
+
+.page-title {
+  font-size: 1.35rem;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  margin: 0 0 0.5rem;
+}
+
+.page-sub {
+  color: var(--muted);
+  margin: 0 0 1.25rem;
+  max-width: 56rem;
+  line-height: 1.55;
+}
+
+.glass-card {
+  background: linear-gradient(160deg, rgba(30, 48, 86, 0.55), rgba(12, 20, 40, 0.75));
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+}
+
+.cy-toolbar .el-button {
+  border-radius: 10px;
+}

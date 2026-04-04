@@ -1,0 +1,106 @@
+{
+  "run_id": "run_20eb6bf0a9",
+  "document_id": "doc_161c821108",
+  "nodes": [
+    {
+      "id": "state_idle",
+      "label": "Idle",
+      "type": "normal",
+      "properties": {
+        "normalized_name": "idle",
+        "description": "The IMS registration system is in idle state, waiting for SIP REGISTER.",
+        "confidence": 1.0,
+        "attributes": {}
+      },
+      "source_doc_id": "doc_161c821108",
+      "source_chunk_ids": [
+        "ev_000_doc_161c821108_c000"
+      ],
+      "source_worker": "worker_a",
+      "judge_score": 0.955,
+      "merge_status": "pending",
+      "created_at": "2026-04-04T05:43:43.885348"
+    },
+    {
+      "id": "state_registered",
+      "label": "Registered",
+      "type": "normal",
+      "properties": {
+        "normalized_name": "registered",
+        "description": "The IMS registration system has received SIP REGISTER and is registered.",
+        "confidence": 1.0,
+        "attributes": {}
+      },
+      "source_doc_id": "doc_161c821108",
+      "source_chunk_ids": [
+        "ev_000_doc_161c821108_c000"
+      ],
+      "source_worker": "worker_a",
+      "judge_score": 0.955,
+      "merge_status": "pending",
+      "created_at": "2026-04-04T05:43:43.885348"
+    },
+    {
+      "id": "state_connected",
+      "label": "Connected",
+      "type": "normal",
+      "properties": {
+        "normalized_name": "connected",
+        "description": "The IMS registration system is connected after policy success.",
+        "confidence": 1.0,
+        "attributes": {}
+      },
+      "source_doc_id": "doc_161c821108",
+      "source_chunk_ids": [
+        "ev_000_doc_161c821108_c000"
+      ],
+      "source_worker": "worker_a",
+      "judge_score": 0.955,
+      "merge_status": "pending",
+      "created_at": "2026-04-04T05:43:43.885348"
+    }
+  ],
+  "edges": [
+    {
+      "source": "state_idle",
+      "target": "state_registered",
+      "interaction": "SIP REGISTER",
+      "properties": {
+        "guard": "",
+        "action": "",
+        "confidence": 1.0,
+        "attributes": {}
+      },
+      "source_doc_id": "doc_161c821108",
+      "source_chunk_ids": [
+        "ev_000_doc_161c821108_c000"
+      ],
+      "source_worker": "worker_a",
+      "judge_score": 0.955,
+      "merge_status": "pending",
+      "created_at": "2026-04-04T05:43:43.885348"
+    },
+    {
+      "source": "state_registered",
+      "target": "state_connected",
+      "interaction": "policy success",
+      "properties": {
+        "guard": "",
+        "action": "",
+        "confidence": 1.0,
+        "attributes": {}
+      },
+      "source_doc_id": "doc_161c821108",
+      "source_chunk_ids": [
+        "ev_000_doc_161c821108_c000"
+      ],
+      "source_worker": "worker_a",
+      "judge_score": 0.955,
+      "merge_status": "pending",
+      "created_at": "2026-04-04T05:43:43.885348"
+    }
+  ],
+  "metadata": {
+    "recommended_worker": "worker_a"
+  }
+}

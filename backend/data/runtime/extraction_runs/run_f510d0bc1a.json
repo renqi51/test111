@@ -1,0 +1,417 @@
+{
+  "run_id": "run_f510d0bc1a",
+  "created_at": "2026-04-04T05:09:18.294946+00:00",
+  "request": {
+    "text": "UE enters idle then registered then connected state in IMS flow.",
+    "title": "",
+    "source_type": "text",
+    "scenario_hint": "IMS",
+    "budget_mode": "default",
+    "high_precision": false,
+    "metadata": {}
+  },
+  "document_input": {
+    "document_id": "doc_a1e01996a7",
+    "title": "Untitled standard fragment",
+    "source_type": "text",
+    "raw_text": "UE enters idle then registered then connected state in IMS flow.",
+    "metadata": {}
+  },
+  "evidence_pack": {
+    "pack_id": "pack_a0b938412d",
+    "query": "Untitled standard fragment",
+    "document_id": "doc_a1e01996a7",
+    "scenario_hint": "IMS",
+    "items": [
+      {
+        "evidence_id": "ev_000_doc_a1e01996a7_c000",
+        "chunk_id": "doc_a1e01996a7_c000",
+        "document_id": "doc_a1e01996a7",
+        "heading": "",
+        "text": "UE enters idle then registered then connected state in IMS flow.",
+        "relevance_score": 0.1387,
+        "source_locator": {
+          "section_id": "s1",
+          "char_start": 0,
+          "char_end": 64
+        },
+        "tags": [
+          "IMS"
+        ]
+      }
+    ],
+    "retrieval_trace": [
+      {
+        "strategy": "keyword_overlap",
+        "top_k": 10,
+        "total_chunks": 1
+      }
+    ],
+    "created_at": "2026-04-04T05:09:14.068276"
+  },
+  "worker_results": [
+    {
+      "run_id": "run_f510d0bc1a",
+      "worker_name": "worker_a",
+      "extraction_mode": "conservative",
+      "states": [
+        {
+          "temp_id": "st_001",
+          "name": "idle",
+          "normalized_name": "idle",
+          "description": "State candidate from evidence 'doc_a1e01996a7_c000'.",
+          "state_type": "State",
+          "confidence": 0.82,
+          "evidence_ids": [
+            "ev_000_doc_a1e01996a7_c000"
+          ],
+          "attributes": {}
+        },
+        {
+          "temp_id": "st_002",
+          "name": "registered",
+          "normalized_name": "registered",
+          "description": "State candidate from evidence 'doc_a1e01996a7_c000'.",
+          "state_type": "State",
+          "confidence": 0.82,
+          "evidence_ids": [
+            "ev_000_doc_a1e01996a7_c000"
+          ],
+          "attributes": {}
+        },
+        {
+          "temp_id": "st_003",
+          "name": "connected",
+          "normalized_name": "connected",
+          "description": "State candidate from evidence 'doc_a1e01996a7_c000'.",
+          "state_type": "State",
+          "confidence": 0.82,
+          "evidence_ids": [
+            "ev_000_doc_a1e01996a7_c000"
+          ],
+          "attributes": {}
+        }
+      ],
+      "transitions": [
+        {
+          "temp_id": "tr_001",
+          "from_state": "st_001",
+          "to_state": "st_002",
+          "trigger": "protocol_message",
+          "guard": "evidence_grounded",
+          "action": "state_update",
+          "confidence": 0.76,
+          "evidence_ids": [
+            "ev_000_doc_a1e01996a7_c000"
+          ],
+          "attributes": {}
+        },
+        {
+          "temp_id": "tr_002",
+          "from_state": "st_002",
+          "to_state": "st_003",
+          "trigger": "protocol_message",
+          "guard": "evidence_grounded",
+          "action": "state_update",
+          "confidence": 0.76,
+          "evidence_ids": [
+            "ev_000_doc_a1e01996a7_c000"
+          ],
+          "attributes": {}
+        }
+      ],
+      "entities": [],
+      "assumptions": [],
+      "open_questions": [],
+      "confidence_summary": {
+        "avg_state_conf": 0.82,
+        "avg_transition_conf": 0.76
+      },
+      "raw_response": {
+        "engine": "fallback-rule",
+        "worker_prompt": "You are Worker A (conservative extraction).\nExtract only evidence-grounded states/transitions from evidence pack.\nEvery state/transition must carry evidence_ids.\nOutput JSON with fields: states, transitions, assumptions, open_questions."
+      },
+      "evidence_pack_id": "pack_a0b938412d",
+      "prompt_version": "v1",
+      "model_name": "fallback-local",
+      "timing_ms": 0,
+      "token_usage": {
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0
+      }
+    },
+    {
+      "run_id": "run_f510d0bc1a",
+      "worker_name": "worker_b",
+      "extraction_mode": "structural",
+      "states": [
+        {
+          "temp_id": "st_001",
+          "name": "idle",
+          "normalized_name": "idle",
+          "description": "State candidate from evidence 'doc_a1e01996a7_c000'.",
+          "state_type": "State",
+          "confidence": 0.74,
+          "evidence_ids": [
+            "ev_000_doc_a1e01996a7_c000"
+          ],
+          "attributes": {}
+        },
+        {
+          "temp_id": "st_002",
+          "name": "registered",
+          "normalized_name": "registered",
+          "description": "State candidate from evidence 'doc_a1e01996a7_c000'.",
+          "state_type": "State",
+          "confidence": 0.74,
+          "evidence_ids": [
+            "ev_000_doc_a1e01996a7_c000"
+          ],
+          "attributes": {}
+        },
+        {
+          "temp_id": "st_003",
+          "name": "connected",
+          "normalized_name": "connected",
+          "description": "State candidate from evidence 'doc_a1e01996a7_c000'.",
+          "state_type": "State",
+          "confidence": 0.74,
+          "evidence_ids": [
+            "ev_000_doc_a1e01996a7_c000"
+          ],
+          "attributes": {}
+        }
+      ],
+      "transitions": [
+        {
+          "temp_id": "tr_001",
+          "from_state": "st_001",
+          "to_state": "st_002",
+          "trigger": "inferred_progression",
+          "guard": "evidence_grounded",
+          "action": "state_update",
+          "confidence": 0.7,
+          "evidence_ids": [
+            "ev_000_doc_a1e01996a7_c000"
+          ],
+          "attributes": {}
+        },
+        {
+          "temp_id": "tr_002",
+          "from_state": "st_002",
+          "to_state": "st_003",
+          "trigger": "inferred_progression",
+          "guard": "evidence_grounded",
+          "action": "state_update",
+          "confidence": 0.7,
+          "evidence_ids": [
+            "ev_000_doc_a1e01996a7_c000"
+          ],
+          "attributes": {}
+        },
+        {
+          "temp_id": "tr_003",
+          "from_state": "st_003",
+          "to_state": "st_001",
+          "trigger": "session_reset",
+          "guard": "optional",
+          "action": "loopback",
+          "confidence": 0.55,
+          "evidence_ids": [
+            "ev_000_doc_a1e01996a7_c000"
+          ],
+          "attributes": {
+            "inferred": true
+          }
+        }
+      ],
+      "entities": [],
+      "assumptions": [],
+      "open_questions": [],
+      "confidence_summary": {
+        "avg_state_conf": 0.74,
+        "avg_transition_conf": 0.65
+      },
+      "raw_response": {
+        "engine": "fallback-rule",
+        "worker_prompt": "You are Worker B (structural induction).\nUse the same evidence pack to produce a more complete state machine.\nDo not hallucinate: inferred items must still attach evidence_ids and uncertainty notes.\nOutput JSON with fields: states, transitions, assumptions, open_questions."
+      },
+      "evidence_pack_id": "pack_a0b938412d",
+      "prompt_version": "v1",
+      "model_name": "fallback-local",
+      "timing_ms": 0,
+      "token_usage": {
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0
+      }
+    }
+  ],
+  "judge": {
+    "judge_run_id": "judge_c445c16cd3",
+    "score_details": [
+      {
+        "worker_name": "worker_a",
+        "schema_validity_score": 1.0,
+        "evidence_alignment_score": 1.0,
+        "graph_consistency_score": 1.0,
+        "completeness_score": 0.75,
+        "conservativeness_score": 1.0,
+        "total_score": 0.955,
+        "comments": []
+      },
+      {
+        "worker_name": "worker_b",
+        "schema_validity_score": 1.0,
+        "evidence_alignment_score": 1.0,
+        "graph_consistency_score": 1.0,
+        "completeness_score": 0.875,
+        "conservativeness_score": 0.6667,
+        "total_score": 0.9342,
+        "comments": []
+      }
+    ],
+    "recommended_worker": "worker_a",
+    "recommended_merge_strategy": "prefer_recommended_worker_if_conflict",
+    "conflict_set": [
+      {
+        "field_path": "transitions.length",
+        "conflict_type": "count_mismatch",
+        "description": "Worker transition count mismatch.",
+        "candidate_values": {
+          "worker_a": 2,
+          "worker_b": 3
+        },
+        "related_evidence_ids": [],
+        "severity": "medium"
+      }
+    ],
+    "needs_repair": false,
+    "repair_instruction": "",
+    "prompt_version": "v1",
+    "model_name": "fallback-local",
+    "timing_ms": 0,
+    "token_usage": {
+      "prompt_tokens": 0,
+      "completion_tokens": 0,
+      "total_tokens": 0
+    }
+  },
+  "repair": null,
+  "staging_graph": {
+    "run_id": "run_f510d0bc1a",
+    "document_id": "doc_a1e01996a7",
+    "nodes": [
+      {
+        "id": "st_001",
+        "label": "idle",
+        "type": "State",
+        "properties": {
+          "normalized_name": "idle",
+          "description": "State candidate from evidence 'doc_a1e01996a7_c000'.",
+          "confidence": 0.82,
+          "attributes": {}
+        },
+        "source_doc_id": "doc_a1e01996a7",
+        "source_chunk_ids": [
+          "ev_000_doc_a1e01996a7_c000"
+        ],
+        "source_worker": "worker_a",
+        "judge_score": 0.955,
+        "merge_status": "pending",
+        "created_at": "2026-04-04T05:09:14.072432"
+      },
+      {
+        "id": "st_002",
+        "label": "registered",
+        "type": "State",
+        "properties": {
+          "normalized_name": "registered",
+          "description": "State candidate from evidence 'doc_a1e01996a7_c000'.",
+          "confidence": 0.82,
+          "attributes": {}
+        },
+        "source_doc_id": "doc_a1e01996a7",
+        "source_chunk_ids": [
+          "ev_000_doc_a1e01996a7_c000"
+        ],
+        "source_worker": "worker_a",
+        "judge_score": 0.955,
+        "merge_status": "pending",
+        "created_at": "2026-04-04T05:09:14.072432"
+      },
+      {
+        "id": "st_003",
+        "label": "connected",
+        "type": "State",
+        "properties": {
+          "normalized_name": "connected",
+          "description": "State candidate from evidence 'doc_a1e01996a7_c000'.",
+          "confidence": 0.82,
+          "attributes": {}
+        },
+        "source_doc_id": "doc_a1e01996a7",
+        "source_chunk_ids": [
+          "ev_000_doc_a1e01996a7_c000"
+        ],
+        "source_worker": "worker_a",
+        "judge_score": 0.955,
+        "merge_status": "pending",
+        "created_at": "2026-04-04T05:09:14.072432"
+      }
+    ],
+    "edges": [
+      {
+        "source": "st_001",
+        "target": "st_002",
+        "interaction": "protocol_message",
+        "properties": {
+          "guard": "evidence_grounded",
+          "action": "state_update",
+          "confidence": 0.76,
+          "attributes": {}
+        },
+        "source_doc_id": "doc_a1e01996a7",
+        "source_chunk_ids": [
+          "ev_000_doc_a1e01996a7_c000"
+        ],
+        "source_worker": "worker_a",
+        "judge_score": 0.955,
+        "merge_status": "pending",
+        "created_at": "2026-04-04T05:09:14.072432"
+      },
+      {
+        "source": "st_002",
+        "target": "st_003",
+        "interaction": "protocol_message",
+        "properties": {
+          "guard": "evidence_grounded",
+          "action": "state_update",
+          "confidence": 0.76,
+          "attributes": {}
+        },
+        "source_doc_id": "doc_a1e01996a7",
+        "source_chunk_ids": [
+          "ev_000_doc_a1e01996a7_c000"
+        ],
+        "source_worker": "worker_a",
+        "judge_score": 0.955,
+        "merge_status": "pending",
+        "created_at": "2026-04-04T05:09:14.072432"
+      }
+    ],
+    "metadata": {
+      "recommended_worker": "worker_a"
+    }
+  },
+  "audit": {
+    "ok": true,
+    "issues": []
+  },
+  "report_path": "E:\\workplace\\3gpp-open-exposure-demo\\backend\\data\\runtime\\reports\\run_f510d0bc1a.md",
+  "trace_summary": {
+    "stage_count": 6,
+    "total_timing_ms": 0
+  }
+}

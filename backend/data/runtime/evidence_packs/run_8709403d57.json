@@ -1,0 +1,42 @@
+{
+  "pack_id": "pack_38b3eb1c70",
+  "query": "Untitled standard fragment VoWiFi VoWiFi attach procedure from init to authenticated state.",
+  "document_id": "doc_45e5cac854",
+  "scenario_hint": "VoWiFi",
+  "items": [
+    {
+      "evidence_id": "ev_000_doc_45e5cac854_c000",
+      "chunk_id": "doc_45e5cac854_c000",
+      "document_id": "doc_45e5cac854",
+      "heading": "",
+      "text": "VoWiFi attach procedure from init to authenticated state.",
+      "relevance_score": 0.5899,
+      "source_locator": {
+        "section_id": "s1",
+        "char_start": 0,
+        "char_end": 57
+      },
+      "tags": [
+        "VoWiFi"
+      ]
+    }
+  ],
+  "retrieval_strategy": "bm25",
+  "retrieval_version": "v1",
+  "rerank_used": false,
+  "rerank_strategy": null,
+  "retriever_config": {
+    "top_k": 10
+  },
+  "retrieval_trace": [
+    {
+      "strategy": "bm25",
+      "strategy_version": "v1",
+      "top_k": 10,
+      "total_chunks": 1,
+      "rerank_used": false,
+      "rerank_strategy": null
+    }
+  ],
+  "created_at": "2026-04-04T07:09:29.360181"
+}

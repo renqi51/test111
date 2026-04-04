@@ -1,0 +1,80 @@
+{
+  "pack_id": "pack_c892fa4424",
+  "query": "Untitled standard fragment",
+  "document_id": "doc_81006d6f62",
+  "scenario_hint": "VoWiFi",
+  "items": [
+    {
+      "evidence_id": "ev_000_doc_81006d6f62_c000",
+      "chunk_id": "doc_81006d6f62_c000",
+      "document_id": "doc_81006d6f62",
+      "heading": "",
+      "text": "[3GPP/IMS Registration Flow Fragment - Demo]",
+      "relevance_score": 0.189,
+      "source_locator": {
+        "section_id": "s1",
+        "char_start": 0,
+        "char_end": 44
+      },
+      "tags": [
+        "VoWiFi"
+      ]
+    },
+    {
+      "evidence_id": "ev_001_doc_81006d6f62_c001",
+      "chunk_id": "doc_81006d6f62_c001",
+      "document_id": "doc_81006d6f62",
+      "heading": "",
+      "text": "In IMS architecture, the UE starts from an idle state before SIP registration.\nThe UE discovers the P-CSCF and sends an initial SIP REGISTER request.\nAfter authentication and authorization procedures are completed by IMS core functions (including interactions with I-CSCF and S-CSCF), the UE enters a registered state.\nIf policy checks and service profile retrieval succeed, the session control context can move to a connected/service-ready state.\nWhen registration expires or deregistration is triggered, the UE transitions from registered (or connected) back to idle.",
+      "relevance_score": 0.0,
+      "source_locator": {
+        "section_id": "s1",
+        "char_start": 46,
+        "char_end": 615
+      },
+      "tags": [
+        "VoWiFi"
+      ]
+    },
+    {
+      "evidence_id": "ev_002_doc_81006d6f62_c002",
+      "chunk_id": "doc_81006d6f62_c002",
+      "document_id": "doc_81006d6f62",
+      "heading": "",
+      "text": "The transition from idle to registered is triggered by SIP REGISTER signaling.\nA guard condition for entering registered is successful authentication.\nA guard condition for entering connected is successful policy and profile validation.\nA transition back to idle may be triggered by timeout, explicit deregistration, or authentication failure.",
+      "relevance_score": 0.0,
+      "source_locator": {
+        "section_id": "s1",
+        "char_start": 617,
+        "char_end": 960
+      },
+      "tags": [
+        "VoWiFi"
+      ]
+    },
+    {
+      "evidence_id": "ev_003_doc_81006d6f62_c003",
+      "chunk_id": "doc_81006d6f62_c003",
+      "document_id": "doc_81006d6f62",
+      "heading": "",
+      "text": "Related evidence terms in standards context:\n- IMS service architecture: 3GPP TS 23.228\n- SIP signaling procedures: 3GPP TS 24.229\n- Naming/reference context often aligned with 3GPP document conventions.",
+      "relevance_score": 0.0,
+      "source_locator": {
+        "section_id": "s2",
+        "char_start": 962,
+        "char_end": 1165
+      },
+      "tags": [
+        "VoWiFi"
+      ]
+    }
+  ],
+  "retrieval_trace": [
+    {
+      "strategy": "keyword_overlap",
+      "top_k": 12,
+      "total_chunks": 4
+    }
+  ],
+  "created_at": "2026-04-04T05:50:19.868667"
+}

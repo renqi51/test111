@@ -1,0 +1,165 @@
+{
+  "run_id": "run_24ad820bba",
+  "document_id": "doc_e996a50483",
+  "nodes": [
+    {
+      "id": "st_001",
+      "label": "idle",
+      "type": "State",
+      "properties": {
+        "normalized_name": "idle",
+        "description": "State candidate from evidence 'doc_e996a50483_c000'.",
+        "confidence": 0.74,
+        "attributes": {}
+      },
+      "source_doc_id": "doc_e996a50483",
+      "source_chunk_ids": [
+        "ev_000_doc_e996a50483_c000"
+      ],
+      "source_worker": "worker_b",
+      "judge_score": 0.9675,
+      "merge_status": "pending",
+      "created_at": "2026-04-04T05:42:39.877282"
+    },
+    {
+      "id": "st_002",
+      "label": "REGISTER",
+      "type": "State",
+      "properties": {
+        "normalized_name": "register",
+        "description": "State candidate from evidence 'doc_e996a50483_c000'.",
+        "confidence": 0.74,
+        "attributes": {}
+      },
+      "source_doc_id": "doc_e996a50483",
+      "source_chunk_ids": [
+        "ev_000_doc_e996a50483_c000"
+      ],
+      "source_worker": "worker_b",
+      "judge_score": 0.9675,
+      "merge_status": "pending",
+      "created_at": "2026-04-04T05:42:39.877282"
+    },
+    {
+      "id": "st_003",
+      "label": "registered",
+      "type": "State",
+      "properties": {
+        "normalized_name": "registered",
+        "description": "State candidate from evidence 'doc_e996a50483_c000'.",
+        "confidence": 0.74,
+        "attributes": {}
+      },
+      "source_doc_id": "doc_e996a50483",
+      "source_chunk_ids": [
+        "ev_000_doc_e996a50483_c000"
+      ],
+      "source_worker": "worker_b",
+      "judge_score": 0.9675,
+      "merge_status": "pending",
+      "created_at": "2026-04-04T05:42:39.877282"
+    },
+    {
+      "id": "st_004",
+      "label": "connected",
+      "type": "State",
+      "properties": {
+        "normalized_name": "connected",
+        "description": "State candidate from evidence 'doc_e996a50483_c000'.",
+        "confidence": 0.74,
+        "attributes": {}
+      },
+      "source_doc_id": "doc_e996a50483",
+      "source_chunk_ids": [
+        "ev_000_doc_e996a50483_c000"
+      ],
+      "source_worker": "worker_b",
+      "judge_score": 0.9675,
+      "merge_status": "pending",
+      "created_at": "2026-04-04T05:42:39.877282"
+    }
+  ],
+  "edges": [
+    {
+      "source": "st_001",
+      "target": "st_002",
+      "interaction": "inferred_progression",
+      "properties": {
+        "guard": "evidence_grounded",
+        "action": "state_update",
+        "confidence": 0.7,
+        "attributes": {}
+      },
+      "source_doc_id": "doc_e996a50483",
+      "source_chunk_ids": [
+        "ev_000_doc_e996a50483_c000"
+      ],
+      "source_worker": "worker_b",
+      "judge_score": 0.9675,
+      "merge_status": "pending",
+      "created_at": "2026-04-04T05:42:39.877282"
+    },
+    {
+      "source": "st_002",
+      "target": "st_003",
+      "interaction": "inferred_progression",
+      "properties": {
+        "guard": "evidence_grounded",
+        "action": "state_update",
+        "confidence": 0.7,
+        "attributes": {}
+      },
+      "source_doc_id": "doc_e996a50483",
+      "source_chunk_ids": [
+        "ev_000_doc_e996a50483_c000"
+      ],
+      "source_worker": "worker_b",
+      "judge_score": 0.9675,
+      "merge_status": "pending",
+      "created_at": "2026-04-04T05:42:39.877282"
+    },
+    {
+      "source": "st_003",
+      "target": "st_004",
+      "interaction": "inferred_progression",
+      "properties": {
+        "guard": "evidence_grounded",
+        "action": "state_update",
+        "confidence": 0.7,
+        "attributes": {}
+      },
+      "source_doc_id": "doc_e996a50483",
+      "source_chunk_ids": [
+        "ev_000_doc_e996a50483_c000"
+      ],
+      "source_worker": "worker_b",
+      "judge_score": 0.9675,
+      "merge_status": "pending",
+      "created_at": "2026-04-04T05:42:39.877282"
+    },
+    {
+      "source": "st_004",
+      "target": "st_001",
+      "interaction": "session_reset",
+      "properties": {
+        "guard": "optional",
+        "action": "loopback",
+        "confidence": 0.55,
+        "attributes": {
+          "inferred": true
+        }
+      },
+      "source_doc_id": "doc_e996a50483",
+      "source_chunk_ids": [
+        "ev_000_doc_e996a50483_c000"
+      ],
+      "source_worker": "worker_b",
+      "judge_score": 0.9675,
+      "merge_status": "pending",
+      "created_at": "2026-04-04T05:42:39.877282"
+    }
+  ],
+  "metadata": {
+    "recommended_worker": "worker_b"
+  }
+}

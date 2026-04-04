@@ -1,0 +1,42 @@
+{
+  "pack_id": "pack_0d3564fb71",
+  "query": "Untitled standard fragment IMS IMS flow idle -> registered",
+  "document_id": "doc_164994a6ac",
+  "scenario_hint": "IMS",
+  "items": [
+    {
+      "evidence_id": "ev_000_doc_164994a6ac_c000",
+      "chunk_id": "doc_164994a6ac_c000",
+      "document_id": "doc_164994a6ac",
+      "heading": "",
+      "text": "IMS flow idle -> registered",
+      "relevance_score": 0.559,
+      "source_locator": {
+        "section_id": "s1",
+        "char_start": 0,
+        "char_end": 27
+      },
+      "tags": [
+        "IMS"
+      ]
+    }
+  ],
+  "retrieval_strategy": "keyword_overlap",
+  "retrieval_version": "v1",
+  "rerank_used": false,
+  "rerank_strategy": null,
+  "retriever_config": {
+    "top_k": 10
+  },
+  "retrieval_trace": [
+    {
+      "strategy": "keyword_overlap",
+      "strategy_version": "v1",
+      "top_k": 10,
+      "total_chunks": 1,
+      "rerank_used": false,
+      "rerank_strategy": null
+    }
+  ],
+  "created_at": "2026-04-04T07:14:10.626925"
+}

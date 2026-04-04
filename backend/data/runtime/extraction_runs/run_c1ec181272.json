@@ -1,0 +1,969 @@
+{
+  "run_id": "run_c1ec181272",
+  "created_at": "2026-04-04T05:54:26.526646+00:00",
+  "request": {
+    "text": "In IMS architecture, UE goes idle -> registered -> connected via SIP REGISTER and policy/profile validation; deregistration returns to idle.",
+    "title": "",
+    "source_type": "text",
+    "scenario_hint": "VoWiFi",
+    "budget_mode": "default",
+    "high_precision": false,
+    "metadata": {}
+  },
+  "document_input": {
+    "document_id": "doc_b4b39fd24c",
+    "title": "Untitled standard fragment",
+    "source_type": "text",
+    "raw_text": "In IMS architecture, UE goes idle -> registered -> connected via SIP REGISTER and policy/profile validation; deregistration returns to idle.",
+    "metadata": {}
+  },
+  "evidence_pack": {
+    "pack_id": "pack_e60aae2f0b",
+    "query": "Untitled standard fragment VoWiFi In IMS architecture, UE goes idle -> registered -> connected via SIP REGISTER and policy/profile validation; deregistration returns to idle.",
+    "document_id": "doc_b4b39fd24c",
+    "scenario_hint": "VoWiFi",
+    "items": [
+      {
+        "evidence_id": "ev_000_doc_b4b39fd24c_c000",
+        "chunk_id": "doc_b4b39fd24c_c000",
+        "document_id": "doc_b4b39fd24c",
+        "heading": "",
+        "text": "In IMS architecture, UE goes idle -> registered -> connected via SIP REGISTER and policy/profile validation; deregistration returns to idle.",
+        "relevance_score": 0.7995,
+        "source_locator": {
+          "section_id": "s1",
+          "char_start": 0,
+          "char_end": 140
+        },
+        "tags": [
+          "VoWiFi"
+        ]
+      }
+    ],
+    "retrieval_trace": [
+      {
+        "strategy": "keyword_overlap",
+        "top_k": 10,
+        "total_chunks": 1
+      }
+    ],
+    "created_at": "2026-04-04T05:54:02.027744"
+  },
+  "worker_results": [
+    {
+      "run_id": "run_c1ec181272",
+      "worker_name": "worker_a",
+      "extraction_mode": "conservative",
+      "states": [
+        {
+          "temp_id": "state_1",
+          "name": "idle",
+          "normalized_name": "idle",
+          "description": "User Equipment (UE) is in idle state in IMS architecture.",
+          "state_type": "normal",
+          "confidence": 0.8,
+          "evidence_ids": [
+            "ev_000_doc_b4b39fd24c_c000"
+          ],
+          "attributes": {}
+        },
+        {
+          "temp_id": "state_2",
+          "name": "registered",
+          "normalized_name": "registered",
+          "description": "UE is registered in IMS architecture.",
+          "state_type": "normal",
+          "confidence": 0.8,
+          "evidence_ids": [
+            "ev_000_doc_b4b39fd24c_c000"
+          ],
+          "attributes": {}
+        },
+        {
+          "temp_id": "state_3",
+          "name": "connected",
+          "normalized_name": "connected",
+          "description": "UE is connected in IMS architecture.",
+          "state_type": "normal",
+          "confidence": 0.8,
+          "evidence_ids": [
+            "ev_000_doc_b4b39fd24c_c000"
+          ],
+          "attributes": {}
+        }
+      ],
+      "transitions": [
+        {
+          "temp_id": "trans_1",
+          "from_state": "state_1",
+          "to_state": "state_2",
+          "trigger": "SIP REGISTER and policy/profile validation",
+          "guard": "",
+          "action": "",
+          "confidence": 0.8,
+          "evidence_ids": [
+            "ev_000_doc_b4b39fd24c_c000"
+          ],
+          "attributes": {}
+        },
+        {
+          "temp_id": "trans_2",
+          "from_state": "state_2",
+          "to_state": "state_3",
+          "trigger": "state_transition",
+          "guard": "",
+          "action": "",
+          "confidence": 0.8,
+          "evidence_ids": [
+            "ev_000_doc_b4b39fd24c_c000"
+          ],
+          "attributes": {}
+        },
+        {
+          "temp_id": "trans_3",
+          "from_state": "state_3",
+          "to_state": "state_1",
+          "trigger": "deregistration",
+          "guard": "",
+          "action": "",
+          "confidence": 0.8,
+          "evidence_ids": [
+            "ev_000_doc_b4b39fd24c_c000"
+          ],
+          "attributes": {}
+        }
+      ],
+      "entities": [],
+      "assumptions": [],
+      "open_questions": [],
+      "confidence_summary": {
+        "avg_state_conf": 0.8,
+        "avg_transition_conf": 0.8
+      },
+      "raw_response": {
+        "engine": "llm",
+        "worker_prompt": "You are Worker A (conservative extraction).\nExtract only evidence-grounded states/transitions from evidence pack.\nEvery state/transition must carry evidence_ids.\nOutput JSON with fields: states, transitions, assumptions, open_questions.",
+        "llm_raw": {
+          "states": [
+            {
+              "temp_id": "state_1",
+              "name": "idle",
+              "normalized_name": "idle",
+              "description": "User Equipment (UE) is in idle state in IMS architecture.",
+              "state_type": "normal",
+              "confidence": 0.8,
+              "evidence_ids": [
+                "ev_000_doc_b4b39fd24c_c000"
+              ],
+              "attributes": {}
+            },
+            {
+              "temp_id": "state_2",
+              "name": "registered",
+              "normalized_name": "registered",
+              "description": "UE is registered in IMS architecture.",
+              "state_type": "normal",
+              "confidence": 0.8,
+              "evidence_ids": [
+                "ev_000_doc_b4b39fd24c_c000"
+              ],
+              "attributes": {}
+            },
+            {
+              "temp_id": "state_3",
+              "name": "connected",
+              "normalized_name": "connected",
+              "description": "UE is connected in IMS architecture.",
+              "state_type": "normal",
+              "confidence": 0.8,
+              "evidence_ids": [
+                "ev_000_doc_b4b39fd24c_c000"
+              ],
+              "attributes": {}
+            }
+          ],
+          "transitions": [
+            {
+              "temp_id": "trans_1",
+              "from_state": "state_1",
+              "to_state": "state_2",
+              "trigger": "SIP REGISTER and policy/profile validation",
+              "guard": null,
+              "action": null,
+              "confidence": 0.8,
+              "evidence_ids": [
+                "ev_000_doc_b4b39fd24c_c000"
+              ],
+              "attributes": {}
+            },
+            {
+              "temp_id": "trans_2",
+              "from_state": "state_2",
+              "to_state": "state_3",
+              "trigger": null,
+              "guard": null,
+              "action": null,
+              "confidence": 0.8,
+              "evidence_ids": [
+                "ev_000_doc_b4b39fd24c_c000"
+              ],
+              "attributes": {}
+            },
+            {
+              "temp_id": "trans_3",
+              "from_state": "state_3",
+              "to_state": "state_1",
+              "trigger": "deregistration",
+              "guard": null,
+              "action": null,
+              "confidence": 0.8,
+              "evidence_ids": [
+                "ev_000_doc_b4b39fd24c_c000"
+              ],
+              "attributes": {}
+            }
+          ],
+          "assumptions": [],
+          "open_questions": []
+        }
+      },
+      "evidence_pack_id": "pack_e60aae2f0b",
+      "prompt_version": "v1",
+      "model_name": "gpt-4.1-mini-2025-04-14",
+      "timing_ms": 8157,
+      "token_usage": {
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0
+      }
+    },
+    {
+      "run_id": "run_c1ec181272",
+      "worker_name": "worker_b",
+      "extraction_mode": "structural",
+      "states": [
+        {
+          "temp_id": "s1",
+          "name": "Idle",
+          "normalized_name": "idle",
+          "description": "The UE is not registered or connected in the IMS network.",
+          "state_type": "initial",
+          "confidence": 0.8,
+          "evidence_ids": [
+            "ev_000_doc_b4b39fd24c_c000"
+          ],
+          "attributes": {}
+        },
+        {
+          "temp_id": "s2",
+          "name": "Registered",
+          "normalized_name": "registered",
+          "description": "The UE has completed SIP REGISTER and policy/profile validation but is not yet connected.",
+          "state_type": "intermediate",
+          "confidence": 0.8,
+          "evidence_ids": [
+            "ev_000_doc_b4b39fd24c_c000"
+          ],
+          "attributes": {}
+        },
+        {
+          "temp_id": "s3",
+          "name": "Connected",
+          "normalized_name": "connected",
+          "description": "The UE is connected in the IMS network after registration.",
+          "state_type": "final",
+          "confidence": 0.8,
+          "evidence_ids": [
+            "ev_000_doc_b4b39fd24c_c000"
+          ],
+          "attributes": {}
+        }
+      ],
+      "transitions": [
+        {
+          "temp_id": "t1",
+          "from_state": "s1",
+          "to_state": "s2",
+          "trigger": "SIP REGISTER",
+          "guard": "policy/profile validation successful",
+          "action": "register UE in IMS",
+          "confidence": 0.8,
+          "evidence_ids": [
+            "ev_000_doc_b4b39fd24c_c000"
+          ],
+          "attributes": {}
+        },
+        {
+          "temp_id": "t2",
+          "from_state": "s2",
+          "to_state": "s3",
+          "trigger": "connection established",
+          "guard": "",
+          "action": "",
+          "confidence": 0.6,
+          "evidence_ids": [
+            "ev_000_doc_b4b39fd24c_c000"
+          ],
+          "attributes": {
+            "uncertainty_note": "Connection establishment after registration is implied but not explicitly stated."
+          }
+        },
+        {
+          "temp_id": "t3",
+          "from_state": "s3",
+          "to_state": "s1",
+          "trigger": "deregistration",
+          "guard": "",
+          "action": "return UE to idle",
+          "confidence": 0.8,
+          "evidence_ids": [
+            "ev_000_doc_b4b39fd24c_c000"
+          ],
+          "attributes": {}
+        }
+      ],
+      "entities": [],
+      "assumptions": [],
+      "open_questions": [
+        "Is the transition from Registered to Connected always automatic after registration, or are there additional triggers or validations?",
+        "Are there any intermediate states or error states during registration or connection not described in the evidence?"
+      ],
+      "confidence_summary": {
+        "avg_state_conf": 0.8,
+        "avg_transition_conf": 0.733
+      },
+      "raw_response": {
+        "engine": "llm",
+        "worker_prompt": "You are Worker B (structural induction).\nUse the same evidence pack to produce a more complete state machine.\nDo not hallucinate: inferred items must still attach evidence_ids and uncertainty notes.\nOutput JSON with fields: states, transitions, assumptions, open_questions.",
+        "llm_raw": {
+          "states": [
+            {
+              "temp_id": "s1",
+              "name": "Idle",
+              "normalized_name": "idle",
+              "description": "The UE is not registered or connected in the IMS network.",
+              "state_type": "initial",
+              "confidence": 0.8,
+              "evidence_ids": [
+                "ev_000_doc_b4b39fd24c_c000"
+              ],
+              "attributes": {}
+            },
+            {
+              "temp_id": "s2",
+              "name": "Registered",
+              "normalized_name": "registered",
+              "description": "The UE has completed SIP REGISTER and policy/profile validation but is not yet connected.",
+              "state_type": "intermediate",
+              "confidence": 0.8,
+              "evidence_ids": [
+                "ev_000_doc_b4b39fd24c_c000"
+              ],
+              "attributes": {}
+            },
+            {
+              "temp_id": "s3",
+              "name": "Connected",
+              "normalized_name": "connected",
+              "description": "The UE is connected in the IMS network after registration.",
+              "state_type": "final",
+              "confidence": 0.8,
+              "evidence_ids": [
+                "ev_000_doc_b4b39fd24c_c000"
+              ],
+              "attributes": {}
+            }
+          ],
+          "transitions": [
+            {
+              "temp_id": "t1",
+              "from_state": "s1",
+              "to_state": "s2",
+              "trigger": "SIP REGISTER",
+              "guard": "policy/profile validation successful",
+              "action": "register UE in IMS",
+              "confidence": 0.8,
+              "evidence_ids": [
+                "ev_000_doc_b4b39fd24c_c000"
+              ],
+              "attributes": {}
+            },
+            {
+              "temp_id": "t2",
+              "from_state": "s2",
+              "to_state": "s3",
+              "trigger": "connection established",
+              "guard": null,
+              "action": null,
+              "confidence": 0.6,
+              "evidence_ids": [
+                "ev_000_doc_b4b39fd24c_c000"
+              ],
+              "attributes": {
+                "uncertainty_note": "Connection establishment after registration is implied but not explicitly stated."
+              }
+            },
+            {
+              "temp_id": "t3",
+              "from_state": "s3",
+              "to_state": "s1",
+              "trigger": "deregistration",
+              "guard": null,
+              "action": "return UE to idle",
+              "confidence": 0.8,
+              "evidence_ids": [
+                "ev_000_doc_b4b39fd24c_c000"
+              ],
+              "attributes": {}
+            }
+          ],
+          "assumptions": [],
+          "open_questions": [
+            "Is the transition from Registered to Connected always automatic after registration, or are there additional triggers or validations?",
+            "Are there any intermediate states or error states during registration or connection not described in the evidence?"
+          ]
+        }
+      },
+      "evidence_pack_id": "pack_e60aae2f0b",
+      "prompt_version": "v1",
+      "model_name": "gpt-4.1-mini-2025-04-14",
+      "timing_ms": 8234,
+      "token_usage": {
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0
+      }
+    }
+  ],
+  "judge": {
+    "judge_run_id": "judge_552feacb45",
+    "score_details": [
+      {
+        "worker_name": "worker_a",
+        "schema_validity_score": 1.0,
+        "evidence_alignment_score": 0.9,
+        "graph_consistency_score": 1.0,
+        "completeness_score": 1.0,
+        "conservativeness_score": 0.95,
+        "total_score": 1.0,
+        "comments": [
+          "S",
+          "c",
+          "h",
+          "e",
+          "m",
+          "a",
+          " ",
+          "i",
+          "s",
+          " ",
+          "v",
+          "a",
+          "l",
+          "i",
+          "d",
+          " ",
+          "a",
+          "n",
+          "d",
+          " ",
+          "c",
+          "o",
+          "m",
+          "p",
+          "l",
+          "e",
+          "t",
+          "e",
+          " ",
+          "w",
+          "i",
+          "t",
+          "h",
+          " ",
+          "c",
+          "o",
+          "n",
+          "s",
+          "i",
+          "s",
+          "t",
+          "e",
+          "n",
+          "t",
+          " ",
+          "g",
+          "r",
+          "a",
+          "p",
+          "h",
+          " ",
+          "s",
+          "t",
+          "r",
+          "u",
+          "c",
+          "t",
+          "u",
+          "r",
+          "e",
+          ".",
+          " ",
+          "T",
+          "r",
+          "a",
+          "n",
+          "s",
+          "i",
+          "t",
+          "i",
+          "o",
+          "n",
+          " ",
+          "d",
+          "e",
+          "s",
+          "c",
+          "r",
+          "i",
+          "p",
+          "t",
+          "i",
+          "o",
+          "n",
+          "s",
+          " ",
+          "a",
+          "l",
+          "i",
+          "g",
+          "n",
+          " ",
+          "w",
+          "e",
+          "l",
+          "l",
+          " ",
+          "w",
+          "i",
+          "t",
+          "h",
+          " ",
+          "e",
+          "v",
+          "i",
+          "d",
+          "e",
+          "n",
+          "c",
+          "e",
+          " ",
+          "b",
+          "u",
+          "t",
+          " ",
+          "u",
+          "s",
+          "e",
+          " ",
+          "m",
+          "o",
+          "r",
+          "e",
+          " ",
+          "t",
+          "e",
+          "c",
+          "h",
+          "n",
+          "i",
+          "c",
+          "a",
+          "l",
+          " ",
+          "t",
+          "e",
+          "r",
+          "m",
+          "s",
+          ".",
+          " ",
+          "N",
+          "o",
+          " ",
+          "a",
+          "s",
+          "s",
+          "u",
+          "m",
+          "p",
+          "t",
+          "i",
+          "o",
+          "n",
+          "s",
+          " ",
+          "p",
+          "r",
+          "e",
+          "s",
+          "e",
+          "n",
+          "t",
+          "."
+        ]
+      },
+      {
+        "worker_name": "worker_b",
+        "schema_validity_score": 1.0,
+        "evidence_alignment_score": 0.85,
+        "graph_consistency_score": 1.0,
+        "completeness_score": 1.0,
+        "conservativeness_score": 0.9,
+        "total_score": 1.0,
+        "comments": [
+          "S",
+          "c",
+          "h",
+          "e",
+          "m",
+          "a",
+          " ",
+          "v",
+          "a",
+          "l",
+          "i",
+          "d",
+          " ",
+          "a",
+          "n",
+          "d",
+          " ",
+          "c",
+          "o",
+          "m",
+          "p",
+          "l",
+          "e",
+          "t",
+          "e",
+          " ",
+          "w",
+          "i",
+          "t",
+          "h",
+          " ",
+          "c",
+          "o",
+          "n",
+          "s",
+          "i",
+          "s",
+          "t",
+          "e",
+          "n",
+          "t",
+          " ",
+          "g",
+          "r",
+          "a",
+          "p",
+          "h",
+          ".",
+          " ",
+          "T",
+          "r",
+          "a",
+          "n",
+          "s",
+          "i",
+          "t",
+          "i",
+          "o",
+          "n",
+          " ",
+          "d",
+          "e",
+          "s",
+          "c",
+          "r",
+          "i",
+          "p",
+          "t",
+          "i",
+          "o",
+          "n",
+          "s",
+          " ",
+          "a",
+          "r",
+          "e",
+          " ",
+          "s",
+          "i",
+          "m",
+          "p",
+          "l",
+          "e",
+          "r",
+          " ",
+          "b",
+          "u",
+          "t",
+          " ",
+          "s",
+          "l",
+          "i",
+          "g",
+          "h",
+          "t",
+          "l",
+          "y",
+          " ",
+          "l",
+          "e",
+          "s",
+          "s",
+          " ",
+          "a",
+          "l",
+          "i",
+          "g",
+          "n",
+          "e",
+          "d",
+          " ",
+          "w",
+          "i",
+          "t",
+          "h",
+          " ",
+          "e",
+          "v",
+          "i",
+          "d",
+          "e",
+          "n",
+          "c",
+          "e",
+          " ",
+          "t",
+          "e",
+          "r",
+          "m",
+          "i",
+          "n",
+          "o",
+          "l",
+          "o",
+          "g",
+          "y",
+          ".",
+          " ",
+          "N",
+          "o",
+          " ",
+          "a",
+          "s",
+          "s",
+          "u",
+          "m",
+          "p",
+          "t",
+          "i",
+          "o",
+          "n",
+          "s",
+          " ",
+          "p",
+          "r",
+          "e",
+          "s",
+          "e",
+          "n",
+          "t",
+          "."
+        ]
+      }
+    ],
+    "recommended_worker": "worker_a",
+    "recommended_merge_strategy": "prefer_recommended_worker_if_conflict",
+    "conflict_set": [
+      {
+        "field_path": "transition_pairs",
+        "conflict_type": "description_variation",
+        "description": "Transition descriptions differ in terminology and detail between workers.",
+        "candidate_values": {
+          "raw": [
+            "state_1->state_2:SIP REGISTER and policy/profile validation",
+            "s1->s2:SIP REGISTER"
+          ]
+        },
+        "related_evidence_ids": [
+          "pack_e60aae2f0b"
+        ],
+        "severity": "low"
+      },
+      {
+        "field_path": "transition_pairs",
+        "conflict_type": "description_variation",
+        "description": "Transition descriptions differ in terminology and detail between workers.",
+        "candidate_values": {
+          "raw": [
+            "state_2->state_3:state_transition",
+            "s2->s3:connection established"
+          ]
+        },
+        "related_evidence_ids": [
+          "pack_e60aae2f0b"
+        ],
+        "severity": "low"
+      }
+    ],
+    "needs_repair": false,
+    "repair_instruction": "",
+    "prompt_version": "v1",
+    "model_name": "gpt-4.1-mini-2025-04-14",
+    "timing_ms": 15283,
+    "token_usage": {
+      "prompt_tokens": 0,
+      "completion_tokens": 0,
+      "total_tokens": 0
+    }
+  },
+  "repair": null,
+  "staging_graph": {
+    "run_id": "run_c1ec181272",
+    "document_id": "doc_b4b39fd24c",
+    "nodes": [
+      {
+        "id": "state_idle",
+        "label": "idle",
+        "type": "normal",
+        "properties": {
+          "normalized_name": "idle",
+          "description": "User Equipment (UE) is in idle state in IMS architecture.",
+          "confidence": 0.8,
+          "attributes": {}
+        },
+        "source_doc_id": "doc_b4b39fd24c",
+        "source_chunk_ids": [
+          "ev_000_doc_b4b39fd24c_c000"
+        ],
+        "source_worker": "worker_a",
+        "judge_score": 1.0,
+        "merge_status": "pending",
+        "created_at": "2026-04-04T05:54:26.474410"
+      },
+      {
+        "id": "state_registered",
+        "label": "registered",
+        "type": "normal",
+        "properties": {
+          "normalized_name": "registered",
+          "description": "UE is registered in IMS architecture.",
+          "confidence": 0.8,
+          "attributes": {}
+        },
+        "source_doc_id": "doc_b4b39fd24c",
+        "source_chunk_ids": [
+          "ev_000_doc_b4b39fd24c_c000"
+        ],
+        "source_worker": "worker_a",
+        "judge_score": 1.0,
+        "merge_status": "pending",
+        "created_at": "2026-04-04T05:54:26.474410"
+      },
+      {
+        "id": "state_connected",
+        "label": "connected",
+        "type": "normal",
+        "properties": {
+          "normalized_name": "connected",
+          "description": "UE is connected in IMS architecture.",
+          "confidence": 0.8,
+          "attributes": {}
+        },
+        "source_doc_id": "doc_b4b39fd24c",
+        "source_chunk_ids": [
+          "ev_000_doc_b4b39fd24c_c000"
+        ],
+        "source_worker": "worker_a",
+        "judge_score": 1.0,
+        "merge_status": "pending",
+        "created_at": "2026-04-04T05:54:26.474410"
+      }
+    ],
+    "edges": [
+      {
+        "source": "state_idle",
+        "target": "state_registered",
+        "interaction": "SIP REGISTER and policy/profile validation",
+        "properties": {
+          "guard": "",
+          "action": "",
+          "confidence": 0.8,
+          "attributes": {}
+        },
+        "source_doc_id": "doc_b4b39fd24c",
+        "source_chunk_ids": [
+          "ev_000_doc_b4b39fd24c_c000"
+        ],
+        "source_worker": "worker_a",
+        "judge_score": 1.0,
+        "merge_status": "pending",
+        "created_at": "2026-04-04T05:54:26.474410"
+      },
+      {
+        "source": "state_registered",
+        "target": "state_connected",
+        "interaction": "state_transition",
+        "properties": {
+          "guard": "",
+          "action": "",
+          "confidence": 0.8,
+          "attributes": {}
+        },
+        "source_doc_id": "doc_b4b39fd24c",
+        "source_chunk_ids": [
+          "ev_000_doc_b4b39fd24c_c000"
+        ],
+        "source_worker": "worker_a",
+        "judge_score": 1.0,
+        "merge_status": "pending",
+        "created_at": "2026-04-04T05:54:26.474410"
+      },
+      {
+        "source": "state_connected",
+        "target": "state_idle",
+        "interaction": "deregistration",
+        "properties": {
+          "guard": "",
+          "action": "",
+          "confidence": 0.8,
+          "attributes": {}
+        },
+        "source_doc_id": "doc_b4b39fd24c",
+        "source_chunk_ids": [
+          "ev_000_doc_b4b39fd24c_c000"
+        ],
+        "source_worker": "worker_a",
+        "judge_score": 1.0,
+        "merge_status": "pending",
+        "created_at": "2026-04-04T05:54:26.474410"
+      }
+    ],
+    "metadata": {
+      "recommended_worker": "worker_a"
+    }
+  },
+  "audit": {
+    "ok": true,
+    "issues": []
+  },
+  "report_path": "E:\\workplace\\3gpp-open-exposure-demo\\backend\\data\\runtime\\reports\\run_c1ec181272.md",
+  "trace_summary": {
+    "stage_count": 6,
+    "total_timing_ms": 31674
+  }
+}

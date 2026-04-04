@@ -1,0 +1,219 @@
+{
+  "run_id": "run_0bb65361f2",
+  "created_at": "2026-04-04T05:04:31.348973+00:00",
+  "request": {
+    "text": "IMS UE registers to network via SIP over IMS core and reaches registered state",
+    "title": "",
+    "source_type": "text",
+    "scenario_hint": "IMS",
+    "budget_mode": "default",
+    "high_precision": false,
+    "metadata": {}
+  },
+  "document_input": {
+    "document_id": "doc_75cc1d965a",
+    "title": "Untitled standard fragment",
+    "source_type": "text",
+    "raw_text": "IMS UE registers to network via SIP over IMS core and reaches registered state",
+    "metadata": {}
+  },
+  "evidence_pack": {
+    "pack_id": "pack_1ef42ed21a",
+    "query": "Untitled standard fragment",
+    "document_id": "doc_75cc1d965a",
+    "scenario_hint": "IMS",
+    "items": [
+      {
+        "evidence_id": "ev_000_doc_75cc1d965a_c000",
+        "chunk_id": "doc_75cc1d965a_c000",
+        "document_id": "doc_75cc1d965a",
+        "heading": "",
+        "text": "IMS UE registers to network via SIP over IMS core and reaches registered state",
+        "relevance_score": 0.125,
+        "source_locator": {
+          "section_id": "s1",
+          "char_start": 0,
+          "char_end": 78
+        },
+        "tags": [
+          "IMS"
+        ]
+      }
+    ],
+    "retrieval_trace": [
+      {
+        "strategy": "keyword_overlap",
+        "top_k": 10,
+        "total_chunks": 1
+      }
+    ],
+    "created_at": "2026-04-04T05:04:31.343956"
+  },
+  "worker_results": [
+    {
+      "run_id": "run_0bb65361f2",
+      "worker_name": "worker_a",
+      "extraction_mode": "conservative",
+      "states": [
+        {
+          "temp_id": "st_001",
+          "name": "registered",
+          "normalized_name": "registered",
+          "description": "State candidate from evidence 'doc_75cc1d965a_c000'.",
+          "state_type": "State",
+          "confidence": 0.82,
+          "evidence_ids": [
+            "ev_000_doc_75cc1d965a_c000"
+          ],
+          "attributes": {}
+        }
+      ],
+      "transitions": [],
+      "entities": [],
+      "assumptions": [],
+      "open_questions": [
+        "State count is low; provide richer section snippets if available.",
+        "No transition confidently extracted from current evidence pack."
+      ],
+      "confidence_summary": {
+        "avg_state_conf": 0.82,
+        "avg_transition_conf": 0.0
+      },
+      "raw_response": {
+        "engine": "fallback-rule",
+        "worker_prompt": "You are Worker A (conservative extraction).\nExtract only evidence-grounded states/transitions from evidence pack.\nEvery state/transition must carry evidence_ids.\nOutput JSON with fields: states, transitions, assumptions, open_questions."
+      },
+      "evidence_pack_id": "pack_1ef42ed21a",
+      "prompt_version": "v1",
+      "model_name": "fallback-local",
+      "timing_ms": 0,
+      "token_usage": {
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0
+      }
+    },
+    {
+      "run_id": "run_0bb65361f2",
+      "worker_name": "worker_b",
+      "extraction_mode": "structural",
+      "states": [
+        {
+          "temp_id": "st_001",
+          "name": "registered",
+          "normalized_name": "registered",
+          "description": "State candidate from evidence 'doc_75cc1d965a_c000'.",
+          "state_type": "State",
+          "confidence": 0.74,
+          "evidence_ids": [
+            "ev_000_doc_75cc1d965a_c000"
+          ],
+          "attributes": {}
+        }
+      ],
+      "transitions": [],
+      "entities": [],
+      "assumptions": [
+        "Structural completion applied due to sparse explicit state markers."
+      ],
+      "open_questions": [
+        "State count is low; provide richer section snippets if available.",
+        "No transition confidently extracted from current evidence pack."
+      ],
+      "confidence_summary": {
+        "avg_state_conf": 0.74,
+        "avg_transition_conf": 0.0
+      },
+      "raw_response": {
+        "engine": "fallback-rule",
+        "worker_prompt": "You are Worker B (structural induction).\nUse the same evidence pack to produce a more complete state machine.\nDo not hallucinate: inferred items must still attach evidence_ids and uncertainty notes.\nOutput JSON with fields: states, transitions, assumptions, open_questions."
+      },
+      "evidence_pack_id": "pack_1ef42ed21a",
+      "prompt_version": "v1",
+      "model_name": "fallback-local",
+      "timing_ms": 0,
+      "token_usage": {
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0
+      }
+    }
+  ],
+  "judge": {
+    "judge_run_id": "judge_eae7636c77",
+    "score_details": [
+      {
+        "worker_name": "worker_a",
+        "schema_validity_score": 1.0,
+        "evidence_alignment_score": 1.0,
+        "graph_consistency_score": 0.75,
+        "completeness_score": 0.1667,
+        "conservativeness_score": 1.0,
+        "total_score": 0.8,
+        "comments": []
+      },
+      {
+        "worker_name": "worker_b",
+        "schema_validity_score": 1.0,
+        "evidence_alignment_score": 1.0,
+        "graph_consistency_score": 0.75,
+        "completeness_score": 0.1667,
+        "conservativeness_score": 1.0,
+        "total_score": 0.8,
+        "comments": []
+      }
+    ],
+    "recommended_worker": "worker_a",
+    "recommended_merge_strategy": "prefer_recommended_worker_if_conflict",
+    "conflict_set": [],
+    "needs_repair": false,
+    "repair_instruction": "",
+    "prompt_version": "v1",
+    "model_name": "fallback-local",
+    "timing_ms": 0,
+    "token_usage": {
+      "prompt_tokens": 0,
+      "completion_tokens": 0,
+      "total_tokens": 0
+    }
+  },
+  "repair": null,
+  "staging_graph": {
+    "run_id": "run_0bb65361f2",
+    "document_id": "doc_75cc1d965a",
+    "nodes": [
+      {
+        "id": "st_001",
+        "label": "registered",
+        "type": "State",
+        "properties": {
+          "normalized_name": "registered",
+          "description": "State candidate from evidence 'doc_75cc1d965a_c000'.",
+          "confidence": 0.82,
+          "attributes": {}
+        },
+        "source_doc_id": "doc_75cc1d965a",
+        "source_chunk_ids": [
+          "ev_000_doc_75cc1d965a_c000"
+        ],
+        "source_worker": "worker_a",
+        "judge_score": 0.8,
+        "merge_status": "pending",
+        "created_at": "2026-04-04T05:04:31.346962"
+      }
+    ],
+    "edges": [],
+    "metadata": {
+      "recommended_worker": "worker_a"
+    }
+  },
+  "audit": {
+    "ok": true,
+    "issues": []
+  },
+  "report_path": "E:\\workplace\\3gpp-open-exposure-demo\\backend\\data\\runtime\\reports\\run_0bb65361f2.md",
+  "trace_summary": {
+    "stage_count": 6,
+    "total_timing_ms": 0
+  }
+}

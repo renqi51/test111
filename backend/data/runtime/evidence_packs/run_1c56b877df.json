@@ -1,0 +1,42 @@
+{
+  "pack_id": "pack_f68d64495c",
+  "query": "Untitled standard fragment IMS IMS registration in idle state receives SIP REGISTER and transitions to registered state.",
+  "document_id": "doc_513c16d627",
+  "scenario_hint": "IMS",
+  "items": [
+    {
+      "evidence_id": "ev_000_doc_513c16d627_c000",
+      "chunk_id": "doc_513c16d627_c000",
+      "document_id": "doc_513c16d627",
+      "heading": "",
+      "text": "IMS registration in idle state receives SIP REGISTER and transitions to registered state.",
+      "relevance_score": 0.736,
+      "source_locator": {
+        "section_id": "s1",
+        "char_start": 0,
+        "char_end": 89
+      },
+      "tags": [
+        "IMS"
+      ]
+    }
+  ],
+  "retrieval_strategy": "keyword_overlap",
+  "retrieval_version": "v1",
+  "rerank_used": false,
+  "rerank_strategy": null,
+  "retriever_config": {
+    "top_k": 10
+  },
+  "retrieval_trace": [
+    {
+      "strategy": "keyword_overlap",
+      "strategy_version": "v1",
+      "top_k": 10,
+      "total_chunks": 1,
+      "rerank_used": false,
+      "rerank_strategy": null
+    }
+  ],
+  "created_at": "2026-04-04T07:09:28.689012"
+}

@@ -1,0 +1,51 @@
+id,label,type,description,evidence_source,en_identifier
+svc_vowifi,VoWiFi,Service,通过不可信 Wi-Fi 接入的运营商语音与 IMS 相关业务,3GPP TS 24.302/24.502 等（概括）,VoWiFi
+svc_ims,IMS,Service,IP 多媒体子系统，会话与注册的核心域,3GPP TS 23.228,IMS
+svc_rcs,RCS,Service,富通信套件，通常依赖 IMS 与 SIP 能力,GSMA RCS 资料（概括）,RCS
+svc_open_gateway,Open Gateway,Service,运营商网络能力开放框架，对接北向 API,GSMA Open Gateway 公开说明,Open Gateway
+nf_epdg,ePDG,NetworkFunction,非可信 WLAN 接入的 PGW 侧隧道终结点,3GPP TS 23.402,ePDG
+nf_n3iwf,N3IWF,NetworkFunction,5G 非 3GPP 接入与 5GC 互通,3GPP TS 23.501/23.502,N3IWF
+nf_pcscf,P-CSCF,NetworkFunction,IMS 边界会话控制，面向 UE 的 SIP 入口,3GPP TS 23.228,P-CSCF
+nf_icscf,I-CSCF,NetworkFunction,IMS 查询 CSCF，负责 S-CSCF 选择与路由,3GPP TS 23.228,I-CSCF
+nf_scscf,S-CSCF,NetworkFunction,IMS 服务 CSCF，业务触发与注册维护,3GPP TS 23.228,S-CSCF
+nf_hss,HSS,NetworkFunction,用户签约与鉴权数据存储（IMS/EPC 语境）,3GPP TS 23.002,HSS
+proto_sip,SIP,Protocol,会话初始协议，IMS 呼叫与会话控制的基础,3GPP TS 24.229,SIP
+proto_dns,DNS,Protocol,域名解析，常用于发现网元与接入点 FQDN,RFC 1035 / 3GPP 命名章节,DNS
+proto_ikev2,IKEv2,Protocol,密钥协商，常用于 ePDG/N3IWF 接入隧道,RFC 7296,IKEv2
+proto_ipsec,IPsec,Protocol,IP 层安全，常与 IKEv2 组合用于接入,RFC 4301,IPsec
+proto_https,HTTPS,Protocol,TLS 保护的 HTTP，用于开放 API 访问,IETF RFC 9110 系列,HTTPS
+proto_rest,REST,Protocol,表述性状态转移风格的 API 形态,行业实践,REST
+proto_diameter,DIAMETER,Protocol,策略与计费等领域常见 AAA 协议,3GPP TS 29.272 等,DIAMETER
+iface_nb_api,Northbound Network API,Interface,面向第三方的北向网络能力接口,CAMARA / Open Gateway 材料,Northbound API
+iface_gm,Gm,Interface,UE 与 P-CSCF 间参考点（SIP/SDP）,3GPP TS 23.228,Gm
+iface_mw,Mw,Interface,CSCF 间 SIP 路由参考点,3GPP TS 23.228,Mw
+iface_rx,Rx,Interface,应用功能与策略控制互通参考点,3GPP TS 23.203,Rx
+plat_camara,CAMARA,Platform,电信能力开放 API 的定义与治理项目,CAMARA 官方组织,CAMARA
+plat_camara_common,CAMARA Commonalities,Platform,CAMARA 共性规范与基线,CAMARA GitHub Commonalities,CAMARA Commonalities
+cap_icm,Identity & Consent Management,Capability,开放 API 场景下的身份与同意管理,CAMARA ICM 仓库,ICM
+cap_oauth2,OAuth2/OIDC,Capability,开放 API 常见授权与身份联合模式,RFC 6749 / OIDC,OAuth2
+fqdn_ims,ims.mnc<MNC>.mcc<MCC>.pub.3gppnetwork.org,FQDNPattern,IMS 相关公共 FQDN 命名模板,3GPP TS 23.003,ims FQDN pattern
+fqdn_wlan,wlan.mnc<MNC>.mcc<MCC>.3gppnetwork.org,FQDNPattern,WLAN 相关命名模板,3GPP TS 23.003,wlan FQDN pattern
+fqdn_epdg,epdg.epc.mnc<MNC>.mcc<MCC>.pub.3gppnetwork.org,FQDNPattern,ePDG 发现用 FQDN 模板,3GPP TS 23.003,ePDG FQDN pattern
+fqdn_n3iwf,n3iwf.5gc.mnc<MNC>.mcc<MCC>.pub.3gppnetwork.org,FQDNPattern,N3IWF 服务实例命名模板,3GPP TS 23.003,N3IWF FQDN pattern
+doc_ts23003,3GPP TS 23.003,StandardDoc,编号、寻址与 FQDN 规则,3GPP 公开规范目录,TS 23.003
+doc_ts24502,3GPP TS 24.502,StandardDoc,5G 非 3GPP 接入相关流程,3GPP 公开规范目录,TS 24.502
+doc_ts23228,3GPP TS 23.228,StandardDoc,IMS 阶段描述与架构,3GPP 公开规范目录,TS 23.228
+doc_ts24229,3GPP TS 24.229,StandardDoc,IMS 中 SIP 与 SDP 协议细节,3GPP 公开规范目录,TS 24.229
+doc_gsma_og,GSMA Open Gateway,StandardDoc,开放网关倡议与能力开放说明,GSMA 官方材料,GSMA Open Gateway
+doc_camara_comm,CAMARA Commonalities Docs,StandardDoc,CAMARA 共性文档入口,CAMARA 项目站点,CAMARA Commonalities Docs
+doc_camara_icm,CAMARA ICM Docs,StandardDoc,身份与同意管理相关规范,CAMARA ICM 仓库,CAMARA ICM Docs
+risk_fqdn_discover,暴露式 FQDN 可能提升资产可发现性,RiskHypothesis,可预测的命名模式或公开 DNS 记录可能降低攻击者枚举成本,研究假设,risk-fqdn
+risk_edge_discovery,边界服务发现链可能泄露入口信息,RiskHypothesis,解析链与证书透明等侧信道可能暴露边界网元,研究假设,risk-edge
+risk_openapi,开放 API 文档可能暴露能力结构,RiskHypothesis,北向 API 清单与示例可能辅助能力测绘,研究假设,risk-openapi
+risk_icm,身份与同意管理配置不当可能带来越权面,RiskHypothesis,同意范围与令牌校验错误可能导致能力滥用,研究假设,risk-icm
+wp_extractor,标准抽取器,WorkProduct,规则/LLM 抽取候选实体与关系到图谱,本仓库原型,Standard Extractor
+wp_validator,图谱校验器,WorkProduct,一致性检查与报告生成,本仓库原型,Graph Validator
+wp_exposure,候选暴露面生成器,WorkProduct,基于 MCC/MNC 与服务上下文生成候选面,本仓库原型,Exposure Generator
+wp_mermaid,Mermaid 导出器,WorkProduct,将当前图谱导出为 Mermaid 文本,本仓库原型,Mermaid Exporter
+wp_passive_report,被动验证报告生成器,WorkProduct,汇总文档映射与实验状态（示意）,本仓库原型,Passive Report Builder
+wp_exp_panel,实验验证任务面板,WorkProduct,展示可在实验环境验证的对象与状态,本仓库原型,Experiment Panel
+met_nodes,节点总数,Metric,图谱节点规模统计,系统计算,metric.nodes
+met_edges,边总数,Metric,图谱关系规模统计,系统计算,metric.edges
+met_high_risk,高风险候选数,Metric,规则打分较高的暴露面候选计数（示意）,系统计算,metric.high_risk
+met_validated,已验证任务数,Metric,实验验证状态为 validated 的任务计数,系统计算,metric.validated

@@ -1,0 +1,32 @@
+{
+  "pack_id": "pack_e60aae2f0b",
+  "query": "Untitled standard fragment VoWiFi In IMS architecture, UE goes idle -> registered -> connected via SIP REGISTER and policy/profile validation; deregistration returns to idle.",
+  "document_id": "doc_b4b39fd24c",
+  "scenario_hint": "VoWiFi",
+  "items": [
+    {
+      "evidence_id": "ev_000_doc_b4b39fd24c_c000",
+      "chunk_id": "doc_b4b39fd24c_c000",
+      "document_id": "doc_b4b39fd24c",
+      "heading": "",
+      "text": "In IMS architecture, UE goes idle -> registered -> connected via SIP REGISTER and policy/profile validation; deregistration returns to idle.",
+      "relevance_score": 0.7995,
+      "source_locator": {
+        "section_id": "s1",
+        "char_start": 0,
+        "char_end": 140
+      },
+      "tags": [
+        "VoWiFi"
+      ]
+    }
+  ],
+  "retrieval_trace": [
+    {
+      "strategy": "keyword_overlap",
+      "top_k": 10,
+      "total_chunks": 1
+    }
+  ],
+  "created_at": "2026-04-04T05:54:02.027744"
+}

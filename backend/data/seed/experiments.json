@@ -1,0 +1,40 @@
+{
+  "tasks": [
+    {
+      "id": "exp_epdg",
+      "title": "ePDG 发现流程复现",
+      "object": "ePDG / VoWiFi 接入链",
+      "method": "在开源 5G/IMS 实验拓扑中对照 TS 24.502 流程梳理发现路径",
+      "environment": "开源 5G 实验环境（示意）",
+      "status": "planned",
+      "notes": "仅实验室内合法环境；不进行未授权扫描。"
+    },
+    {
+      "id": "exp_ims",
+      "title": "IMS 服务链路验证",
+      "object": "P-CSCF → I-CSCF → S-CSCF / SIP",
+      "method": "基于仿真 UE 与核心网抓包，核对 SIP 路由与 DNS 解析链",
+      "environment": "容器化 IMS 试验床",
+      "status": "in-progress",
+      "notes": "聚焦协议行为与命名一致性，不对外网资产探测。"
+    },
+    {
+      "id": "exp_og",
+      "title": "Open Gateway 北向 API 结构映射",
+      "object": "Northbound Network API / CAMARA",
+      "method": "将公开 API 清单与图谱节点做一致性映射与变更追踪",
+      "environment": "文档与沙箱 API（mock）",
+      "status": "validated",
+      "notes": "对照 GSMA / CAMARA 公开资料，验证分类与依赖边是否合理。"
+    },
+    {
+      "id": "exp_fqdn",
+      "title": "FQDN 命名模式抽样核对",
+      "object": "IMS / WLAN / ePDG / N3IWF 模板",
+      "method": "在试验配置中生成 MCC/MNC 实例并与 TS 23.003 模板比对",
+      "environment": "离线配置库",
+      "status": "planned",
+      "notes": "输出候选串仅用于内部分析与演示。"
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "prompts": {},
+  "examples": {
+    "judge_scoring": {
+      "version": "v_override_1",
+      "template": "replace with your enterprise judge prompt"
+    }
+  }
+}

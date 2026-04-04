@@ -1,0 +1,600 @@
+{
+  "run_id": "run_8709403d57",
+  "created_at": "2026-04-04T07:09:54.823546+00:00",
+  "request": {
+    "text": "VoWiFi attach procedure from init to authenticated state.",
+    "title": "",
+    "source_type": "text",
+    "scenario_hint": "VoWiFi",
+    "budget_mode": "default",
+    "high_precision": false,
+    "metadata": {
+      "retrieval_strategy": "bm25"
+    }
+  },
+  "document_input": {
+    "document_id": "doc_45e5cac854",
+    "title": "Untitled standard fragment",
+    "source_type": "text",
+    "raw_text": "VoWiFi attach procedure from init to authenticated state.",
+    "metadata": {
+      "retrieval_strategy": "bm25"
+    }
+  },
+  "evidence_pack": {
+    "pack_id": "pack_38b3eb1c70",
+    "query": "Untitled standard fragment VoWiFi VoWiFi attach procedure from init to authenticated state.",
+    "document_id": "doc_45e5cac854",
+    "scenario_hint": "VoWiFi",
+    "items": [
+      {
+        "evidence_id": "ev_000_doc_45e5cac854_c000",
+        "chunk_id": "doc_45e5cac854_c000",
+        "document_id": "doc_45e5cac854",
+        "heading": "",
+        "text": "VoWiFi attach procedure from init to authenticated state.",
+        "relevance_score": 0.5899,
+        "source_locator": {
+          "section_id": "s1",
+          "char_start": 0,
+          "char_end": 57
+        },
+        "tags": [
+          "VoWiFi"
+        ]
+      }
+    ],
+    "retrieval_strategy": "bm25",
+    "retrieval_version": "v1",
+    "rerank_used": false,
+    "rerank_strategy": null,
+    "retriever_config": {
+      "top_k": 10
+    },
+    "retrieval_trace": [
+      {
+        "strategy": "bm25",
+        "strategy_version": "v1",
+        "top_k": 10,
+        "total_chunks": 1,
+        "rerank_used": false,
+        "rerank_strategy": null
+      }
+    ],
+    "created_at": "2026-04-04T07:09:29.360181"
+  },
+  "worker_results": [
+    {
+      "run_id": "run_8709403d57",
+      "worker_name": "worker_a",
+      "extraction_mode": "conservative",
+      "states": [
+        {
+          "temp_id": "state_1",
+          "name": "init",
+          "normalized_name": "init",
+          "description": "Initial state before VoWiFi attach procedure starts",
+          "state_type": "initial",
+          "confidence": 0.5899,
+          "evidence_ids": [
+            "ev_000_doc_45e5cac854_c000"
+          ],
+          "attributes": {}
+        },
+        {
+          "temp_id": "state_2",
+          "name": "authenticated",
+          "normalized_name": "authenticated",
+          "description": "State after successful VoWiFi attach procedure",
+          "state_type": "final",
+          "confidence": 0.5899,
+          "evidence_ids": [
+            "ev_000_doc_45e5cac854_c000"
+          ],
+          "attributes": {}
+        }
+      ],
+      "transitions": [
+        {
+          "temp_id": "trans_1",
+          "from_state": "state_1",
+          "to_state": "state_2",
+          "trigger": "VoWiFi attach procedure",
+          "guard": "",
+          "action": "",
+          "confidence": 0.5899,
+          "evidence_ids": [
+            "ev_000_doc_45e5cac854_c000"
+          ],
+          "attributes": {}
+        }
+      ],
+      "entities": [],
+      "assumptions": [],
+      "open_questions": [],
+      "confidence_summary": {
+        "avg_state_conf": 0.59,
+        "avg_transition_conf": 0.59
+      },
+      "raw_response": {
+        "engine": "llm",
+        "worker_prompt": "You are Worker A (conservative extraction).\nExtract only evidence-grounded states/transitions from evidence pack.\nEvery state/transition must carry evidence_ids.\nOutput JSON with fields: states, transitions, assumptions, open_questions.",
+        "llm_raw": {
+          "states": [
+            {
+              "temp_id": "state_1",
+              "name": "init",
+              "normalized_name": "init",
+              "description": "Initial state before VoWiFi attach procedure starts",
+              "state_type": "initial",
+              "confidence": 0.5899,
+              "evidence_ids": [
+                "ev_000_doc_45e5cac854_c000"
+              ],
+              "attributes": {}
+            },
+            {
+              "temp_id": "state_2",
+              "name": "authenticated",
+              "normalized_name": "authenticated",
+              "description": "State after successful VoWiFi attach procedure",
+              "state_type": "final",
+              "confidence": 0.5899,
+              "evidence_ids": [
+                "ev_000_doc_45e5cac854_c000"
+              ],
+              "attributes": {}
+            }
+          ],
+          "transitions": [
+            {
+              "temp_id": "trans_1",
+              "from_state": "state_1",
+              "to_state": "state_2",
+              "trigger": "VoWiFi attach procedure",
+              "guard": null,
+              "action": null,
+              "confidence": 0.5899,
+              "evidence_ids": [
+                "ev_000_doc_45e5cac854_c000"
+              ],
+              "attributes": {}
+            }
+          ],
+          "assumptions": [],
+          "open_questions": []
+        }
+      },
+      "evidence_pack_id": "pack_38b3eb1c70",
+      "prompt_version": "v1",
+      "model_name": "gpt-4.1-mini-2025-04-14",
+      "timing_ms": 9249,
+      "token_usage": {
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0
+      }
+    },
+    {
+      "run_id": "run_8709403d57",
+      "worker_name": "worker_b",
+      "extraction_mode": "structural",
+      "states": [
+        {
+          "temp_id": "state_1",
+          "name": "Init",
+          "normalized_name": "init",
+          "description": "Initial state before VoWiFi attach procedure starts.",
+          "state_type": "initial",
+          "confidence": 0.9,
+          "evidence_ids": [
+            "ev_000_doc_45e5cac854_c000"
+          ],
+          "attributes": {}
+        },
+        {
+          "temp_id": "state_2",
+          "name": "Authenticated",
+          "normalized_name": "authenticated",
+          "description": "State after successful authentication in VoWiFi attach procedure.",
+          "state_type": "final",
+          "confidence": 0.9,
+          "evidence_ids": [
+            "ev_000_doc_45e5cac854_c000"
+          ],
+          "attributes": {}
+        }
+      ],
+      "transitions": [
+        {
+          "temp_id": "trans_1",
+          "from_state": "state_1",
+          "to_state": "state_2",
+          "trigger": "VoWiFi attach procedure",
+          "guard": "",
+          "action": "Attach procedure completes successfully",
+          "confidence": 0.8,
+          "evidence_ids": [
+            "ev_000_doc_45e5cac854_c000"
+          ],
+          "attributes": {}
+        }
+      ],
+      "entities": [],
+      "assumptions": [],
+      "open_questions": [
+        "What are the intermediate states between init and authenticated in the VoWiFi attach procedure?",
+        "What triggers and guards govern transitions in the VoWiFi attach procedure?",
+        "Are there failure or error states in the attach procedure?"
+      ],
+      "confidence_summary": {
+        "avg_state_conf": 0.9,
+        "avg_transition_conf": 0.8
+      },
+      "raw_response": {
+        "engine": "llm",
+        "worker_prompt": "You are Worker B (structural induction).\nUse the same evidence pack to produce a more complete state machine.\nDo not hallucinate: inferred items must still attach evidence_ids and uncertainty notes.\nOutput JSON with fields: states, transitions, assumptions, open_questions.",
+        "llm_raw": {
+          "states": [
+            {
+              "temp_id": "state_1",
+              "name": "Init",
+              "normalized_name": "init",
+              "description": "Initial state before VoWiFi attach procedure starts.",
+              "state_type": "initial",
+              "confidence": 0.9,
+              "evidence_ids": [
+                "ev_000_doc_45e5cac854_c000"
+              ],
+              "attributes": {}
+            },
+            {
+              "temp_id": "state_2",
+              "name": "Authenticated",
+              "normalized_name": "authenticated",
+              "description": "State after successful authentication in VoWiFi attach procedure.",
+              "state_type": "final",
+              "confidence": 0.9,
+              "evidence_ids": [
+                "ev_000_doc_45e5cac854_c000"
+              ],
+              "attributes": {}
+            }
+          ],
+          "transitions": [
+            {
+              "temp_id": "trans_1",
+              "from_state": "state_1",
+              "to_state": "state_2",
+              "trigger": "VoWiFi attach procedure",
+              "guard": null,
+              "action": "Attach procedure completes successfully",
+              "confidence": 0.8,
+              "evidence_ids": [
+                "ev_000_doc_45e5cac854_c000"
+              ],
+              "attributes": {}
+            }
+          ],
+          "assumptions": [],
+          "open_questions": [
+            "What are the intermediate states between init and authenticated in the VoWiFi attach procedure?",
+            "What triggers and guards govern transitions in the VoWiFi attach procedure?",
+            "Are there failure or error states in the attach procedure?"
+          ]
+        }
+      },
+      "evidence_pack_id": "pack_38b3eb1c70",
+      "prompt_version": "v1",
+      "model_name": "gpt-4.1-mini-2025-04-14",
+      "timing_ms": 8547,
+      "token_usage": {
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0
+      }
+    }
+  ],
+  "judge": {
+    "judge_run_id": "judge_7a4f8d7659",
+    "score_details": [
+      {
+        "worker_name": "worker_a",
+        "schema_validity_score": 1.0,
+        "evidence_alignment_score": 1.0,
+        "graph_consistency_score": 1.0,
+        "completeness_score": 1.0,
+        "conservativeness_score": 1.0,
+        "total_score": 1.0,
+        "comments": [
+          "F",
+          "u",
+          "l",
+          "l",
+          "y",
+          " ",
+          "s",
+          "u",
+          "p",
+          "p",
+          "o",
+          "r",
+          "t",
+          "e",
+          "d",
+          " ",
+          "b",
+          "y",
+          " ",
+          "e",
+          "v",
+          "i",
+          "d",
+          "e",
+          "n",
+          "c",
+          "e",
+          " ",
+          "p",
+          "a",
+          "c",
+          "k",
+          ";",
+          " ",
+          "s",
+          "c",
+          "h",
+          "e",
+          "m",
+          "a",
+          " ",
+          "a",
+          "n",
+          "d",
+          " ",
+          "c",
+          "o",
+          "n",
+          "t",
+          "e",
+          "n",
+          "t",
+          " ",
+          "a",
+          "r",
+          "e",
+          " ",
+          "c",
+          "o",
+          "n",
+          "s",
+          "i",
+          "s",
+          "t",
+          "e",
+          "n",
+          "t",
+          " ",
+          "a",
+          "n",
+          "d",
+          " ",
+          "c",
+          "o",
+          "m",
+          "p",
+          "l",
+          "e",
+          "t",
+          "e",
+          "."
+        ]
+      },
+      {
+        "worker_name": "worker_b",
+        "schema_validity_score": 1.0,
+        "evidence_alignment_score": 1.0,
+        "graph_consistency_score": 1.0,
+        "completeness_score": 1.0,
+        "conservativeness_score": 1.0,
+        "total_score": 1.0,
+        "comments": [
+          "F",
+          "u",
+          "l",
+          "l",
+          "y",
+          " ",
+          "s",
+          "u",
+          "p",
+          "p",
+          "o",
+          "r",
+          "t",
+          "e",
+          "d",
+          " ",
+          "b",
+          "y",
+          " ",
+          "e",
+          "v",
+          "i",
+          "d",
+          "e",
+          "n",
+          "c",
+          "e",
+          " ",
+          "p",
+          "a",
+          "c",
+          "k",
+          ";",
+          " ",
+          "s",
+          "c",
+          "h",
+          "e",
+          "m",
+          "a",
+          " ",
+          "a",
+          "n",
+          "d",
+          " ",
+          "c",
+          "o",
+          "n",
+          "t",
+          "e",
+          "n",
+          "t",
+          " ",
+          "a",
+          "r",
+          "e",
+          " ",
+          "c",
+          "o",
+          "n",
+          "s",
+          "i",
+          "s",
+          "t",
+          "e",
+          "n",
+          "t",
+          " ",
+          "a",
+          "n",
+          "d",
+          " ",
+          "c",
+          "o",
+          "m",
+          "p",
+          "l",
+          "e",
+          "t",
+          "e",
+          "."
+        ]
+      }
+    ],
+    "recommended_worker": "worker_a",
+    "recommended_merge_strategy": "prefer_recommended_worker_if_conflict",
+    "conflict_set": [],
+    "needs_repair": false,
+    "repair_instruction": "",
+    "prompt_version": "v1",
+    "model_name": "gpt-4.1-mini-2025-04-14",
+    "timing_ms": 14322,
+    "token_usage": {
+      "prompt_tokens": 0,
+      "completion_tokens": 0,
+      "total_tokens": 0
+    },
+    "normalization_notes": [],
+    "validation_errors": [],
+    "retry_reason": "",
+    "fallback_reason": ""
+  },
+  "repair": null,
+  "staging_graph": {
+    "run_id": "run_8709403d57",
+    "document_id": "doc_45e5cac854",
+    "nodes": [
+      {
+        "id": "state_init",
+        "label": "init",
+        "type": "initial",
+        "properties": {
+          "normalized_name": "init",
+          "description": "Initial state before VoWiFi attach procedure starts",
+          "confidence": 0.5899,
+          "attributes": {}
+        },
+        "source_doc_id": "doc_45e5cac854",
+        "source_chunk_ids": [
+          "ev_000_doc_45e5cac854_c000"
+        ],
+        "source_worker": "worker_a",
+        "judge_score": 1.0,
+        "merge_status": "pending",
+        "created_at": "2026-04-04T07:09:54.718370"
+      },
+      {
+        "id": "state_authenticated",
+        "label": "authenticated",
+        "type": "final",
+        "properties": {
+          "normalized_name": "authenticated",
+          "description": "State after successful VoWiFi attach procedure",
+          "confidence": 0.5899,
+          "attributes": {}
+        },
+        "source_doc_id": "doc_45e5cac854",
+        "source_chunk_ids": [
+          "ev_000_doc_45e5cac854_c000"
+        ],
+        "source_worker": "worker_a",
+        "judge_score": 1.0,
+        "merge_status": "pending",
+        "created_at": "2026-04-04T07:09:54.718370"
+      }
+    ],
+    "edges": [
+      {
+        "source": "state_init",
+        "target": "state_authenticated",
+        "interaction": "VoWiFi attach procedure",
+        "properties": {
+          "guard": "",
+          "action": "",
+          "confidence": 0.5899,
+          "attributes": {}
+        },
+        "source_doc_id": "doc_45e5cac854",
+        "source_chunk_ids": [
+          "ev_000_doc_45e5cac854_c000"
+        ],
+        "source_worker": "worker_a",
+        "judge_score": 1.0,
+        "merge_status": "pending",
+        "created_at": "2026-04-04T07:09:54.718370"
+      }
+    ],
+    "metadata": {
+      "recommended_worker": "worker_a"
+    }
+  },
+  "audit": {
+    "ok": true,
+    "issues": []
+  },
+  "report_path": "E:\\workplace\\3gpp-open-exposure-demo\\backend\\data\\runtime\\reports\\run_8709403d57.md",
+  "run_meta": {
+    "prompt_versions": {
+      "worker_a": "v1",
+      "worker_b": "v1",
+      "judge": "v1",
+      "repair": "v1"
+    },
+    "prompt_hashes": {
+      "worker_a": "f23197f6268d85c4b460e06945c1427c1b508cf753f1f022e122334d1ad6a0ef",
+      "worker_b": "f8ef45f6b30eef0a6bb6e224c3674fb951a4e3e031a921232c8fc8591cc34459",
+      "judge": "17b0335aee32c7e7c710a841638c4038206db7d059e9e1401ff654613474b9f0",
+      "repair": "0f9d85efb79ee80e23ea9c208832ddcc11b3d70cbf0380218f13c5ecee251241"
+    },
+    "retrieval_strategy": "bm25",
+    "retrieval_version": "v1",
+    "rerank_used": false,
+    "rerank_strategy": null
+  },
+  "trace_summary": {
+    "stage_count": 6,
+    "total_timing_ms": 32118
+  }
+}

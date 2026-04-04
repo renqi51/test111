@@ -1,0 +1,29 @@
+{
+  "run_id": "run_0bb65361f2",
+  "document_id": "doc_75cc1d965a",
+  "nodes": [
+    {
+      "id": "st_001",
+      "label": "registered",
+      "type": "State",
+      "properties": {
+        "normalized_name": "registered",
+        "description": "State candidate from evidence 'doc_75cc1d965a_c000'.",
+        "confidence": 0.82,
+        "attributes": {}
+      },
+      "source_doc_id": "doc_75cc1d965a",
+      "source_chunk_ids": [
+        "ev_000_doc_75cc1d965a_c000"
+      ],
+      "source_worker": "worker_a",
+      "judge_score": 0.8,
+      "merge_status": "pending",
+      "created_at": "2026-04-04T05:04:31.346962"
+    }
+  ],
+  "edges": [],
+  "metadata": {
+    "recommended_worker": "worker_a"
+  }
+}

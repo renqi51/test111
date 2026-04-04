@@ -1,0 +1,134 @@
+{
+  "run_id": "exp_11640c6c3b",
+  "created_at": "2026-04-04T08:02:53.929850+00:00",
+  "service": "IMS",
+  "mcc": "460",
+  "mnc": "01",
+  "patterns": [
+    {
+      "pattern_id": "pat_ims_00",
+      "service": "IMS",
+      "category": "fqdn",
+      "expression": "ims.mnc001.mcc460.pub.3gppnetwork.org",
+      "rationale": "Derived from 3GPP/GSMA naming pattern and graph relations.",
+      "evidence_docs": [
+        "3GPP TS 23.003"
+      ]
+    }
+  ],
+  "candidates": [
+    {
+      "candidate_id": "cand_000",
+      "candidate_fqdn": "ims.mnc001.mcc460.pub.3gppnetwork.org",
+      "service": "IMS",
+      "protocols": [
+        "SIP",
+        "DNS"
+      ],
+      "network_functions": [
+        "HSS",
+        "S-CSCF",
+        "I-CSCF",
+        "P-CSCF"
+      ],
+      "confidence": 0.63,
+      "evidence": {
+        "evidence_docs": [
+          "3GPP TS 23.003"
+        ],
+        "graph_paths": [
+          "IMS->uses_network_function->HSS",
+          "IMS->uses_network_function->S-CSCF",
+          "IMS->uses_network_function->I-CSCF",
+          "IMS->uses_network_function->P-CSCF"
+        ],
+        "related_risks": [
+          "暴露式 FQDN 可能提升资产可发现性"
+        ],
+        "source_kind": [
+          "standard_pattern",
+          "graph_inference",
+          "probe_observation"
+        ]
+      },
+      "probe_status": {
+        "target": "ims.mnc001.mcc460.pub.3gppnetwork.org",
+        "host": "ims.mnc001.mcc460.pub.3gppnetwork.org",
+        "permitted": false,
+        "policy_reason": "allowlist_empty_configure_EXPOSURE_PROBE_ALLOWLIST_SUFFIXES",
+        "dns_ok": false,
+        "dns_addresses": [],
+        "https_ok": null,
+        "https_status": null,
+        "https_latency_ms": null,
+        "tls_error": null,
+        "error": null
+      }
+    }
+  ],
+  "assessments": [
+    {
+      "candidate_id": "cand_000",
+      "risk_level": "medium",
+      "score": 0.6,
+      "summary": "The candidate host ims.mnc001.mcc460.pub.3gppnetwork.org exposes multiple IMS network functions (HSS, S-CSCF, I-CSCF, P-CSCF) with protocols SIP and DNS. The FQDN follows a standard 3GPP pattern but is publicly resolvable, increasing asset discoverability. Probe observations indicate DNS resolution failure and no HTTPS connectivity, limiting immediate exploitation but confirming exposure.",
+      "conservative_explanation": "While the host aligns with standard 3GPP IMS naming and network functions, the public exposure of these critical IMS components without DNS resolution or HTTPS availability suggests a moderate risk. The absence of DNS and HTTPS connectivity reduces attack feasibility but does not eliminate the risk of reconnaissance or indirect attacks. The confidence score of 0.63 supports a medium risk rating, reflecting partial evidence and conservative assessment.",
+      "attack_surface_notes": [
+        "Exposure of multiple IMS network functions (HSS, S-CSCF, I-CSCF, P-CSCF) increases potential attack vectors.",
+        "Publicly resolvable FQDN enhances asset discoverability by adversaries.",
+        "Protocols SIP and DNS are commonly targeted in telecom attacks.",
+        "Lack of DNS resolution and HTTPS connectivity currently limits direct exploitation."
+      ],
+      "missing_evidence": [
+        "No successful DNS resolution or IP address information.",
+        "No HTTPS or TLS handshake data to assess secure communication.",
+        "No active probe results indicating service responsiveness or vulnerabilities."
+      ],
+      "evidence_refs": [
+        "3GPP TS 23.003",
+        "IMS->uses_network_function->HSS",
+        "IMS->uses_network_function->S-CSCF",
+        "IMS->uses_network_function->I-CSCF",
+        "IMS->uses_network_function->P-CSCF",
+        "暴露式 FQDN 可能提升资产可发现性",
+        "probe_status: dns_ok=false, https_ok=null"
+      ],
+      "model_name": "gpt-4.1-mini-2025-04-14",
+      "fallback_used": false
+    }
+  ],
+  "probe_run": {
+    "run_id": "00400eda-e5fc-4fe1-9ca8-8232b641000b",
+    "started_at": "2026-04-04T08:02:40.364042+00:00",
+    "finished_at": "2026-04-04T08:02:40.364593+00:00",
+    "probe_mode": "allowlist",
+    "results": [
+      {
+        "target": "ims.mnc001.mcc460.pub.3gppnetwork.org",
+        "host": "ims.mnc001.mcc460.pub.3gppnetwork.org",
+        "permitted": false,
+        "policy_reason": "allowlist_empty_configure_EXPOSURE_PROBE_ALLOWLIST_SUFFIXES",
+        "dns_ok": false,
+        "dns_addresses": [],
+        "https_ok": null,
+        "https_status": null,
+        "https_latency_ms": null,
+        "tls_error": null,
+        "error": null
+      }
+    ],
+    "summary": {
+      "total": 1,
+      "permitted": 0,
+      "dns_ok": 0,
+      "https_ok": 0
+    }
+  },
+  "report_path": "data\\runtime\\exposure_runs\\exp_11640c6c3b.md",
+  "summary": {
+    "total_candidates": 1,
+    "high_or_critical": 0,
+    "probe_reachable": 0,
+    "llm_used": true
+  }
+}

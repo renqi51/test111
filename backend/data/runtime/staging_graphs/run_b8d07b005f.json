@@ -1,0 +1,68 @@
+{
+  "run_id": "run_b8d07b005f",
+  "document_id": "doc_164994a6ac",
+  "nodes": [
+    {
+      "id": "state_ims_flow_idle",
+      "label": "IMS flow idle",
+      "type": "state",
+      "properties": {
+        "normalized_name": "ims_flow_idle",
+        "description": "IMS flow is in idle state",
+        "confidence": 0.559,
+        "attributes": {}
+      },
+      "source_doc_id": "doc_164994a6ac",
+      "source_chunk_ids": [
+        "ev_000_doc_164994a6ac_c000"
+      ],
+      "source_worker": "worker_a",
+      "judge_score": 1.0,
+      "merge_status": "pending",
+      "created_at": "2026-04-04T07:14:40.896401"
+    },
+    {
+      "id": "state_registered",
+      "label": "registered",
+      "type": "state",
+      "properties": {
+        "normalized_name": "registered",
+        "description": "IMS flow is registered",
+        "confidence": 0.559,
+        "attributes": {}
+      },
+      "source_doc_id": "doc_164994a6ac",
+      "source_chunk_ids": [
+        "ev_000_doc_164994a6ac_c000"
+      ],
+      "source_worker": "worker_a",
+      "judge_score": 1.0,
+      "merge_status": "pending",
+      "created_at": "2026-04-04T07:14:40.896401"
+    }
+  ],
+  "edges": [
+    {
+      "source": "state_ims_flow_idle",
+      "target": "state_registered",
+      "interaction": "state_transition",
+      "properties": {
+        "guard": "",
+        "action": "",
+        "confidence": 0.559,
+        "attributes": {}
+      },
+      "source_doc_id": "doc_164994a6ac",
+      "source_chunk_ids": [
+        "ev_000_doc_164994a6ac_c000"
+      ],
+      "source_worker": "worker_a",
+      "judge_score": 1.0,
+      "merge_status": "pending",
+      "created_at": "2026-04-04T07:14:40.896401"
+    }
+  ],
+  "metadata": {
+    "recommended_worker": "worker_a"
+  }
+}

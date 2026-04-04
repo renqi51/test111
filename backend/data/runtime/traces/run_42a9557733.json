@@ -1,0 +1,68 @@
+{
+  "run_id": "run_42a9557733",
+  "traces": [
+    {
+      "stage": "stage0_input",
+      "started_at": "2026-04-04T05:22:30.311719+00:00",
+      "finished_at": "2026-04-04T05:22:30.311719+00:00",
+      "summary": {
+        "document_id": "doc_5b1ae08697",
+        "source_type": "text"
+      },
+      "error": null
+    },
+    {
+      "stage": "stage1_preprocess",
+      "started_at": "2026-04-04T05:22:30.311719+00:00",
+      "finished_at": "2026-04-04T05:22:30.311719+00:00",
+      "summary": {
+        "chunk_count": 1
+      },
+      "error": null
+    },
+    {
+      "stage": "stage2_retrieval",
+      "started_at": "2026-04-04T05:22:30.311719+00:00",
+      "finished_at": "2026-04-04T05:22:30.311719+00:00",
+      "summary": {
+        "evidence_pack_id": "pack_f6d59164e3",
+        "items": 1
+      },
+      "error": null
+    },
+    {
+      "stage": "stage3_workers",
+      "started_at": "2026-04-04T05:22:30.317710+00:00",
+      "finished_at": "2026-04-04T05:22:30.317710+00:00",
+      "summary": {
+        "workers": [
+          "worker_a",
+          "worker_b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "stage": "stage4_judge",
+      "started_at": "2026-04-04T05:22:30.317710+00:00",
+      "finished_at": "2026-04-04T05:22:30.318709+00:00",
+      "summary": {
+        "recommended_worker": "worker_a",
+        "needs_repair": false,
+        "conflicts": 1
+      },
+      "error": null
+    },
+    {
+      "stage": "stage6_staging_graph",
+      "started_at": "2026-04-04T05:22:30.318709+00:00",
+      "finished_at": "2026-04-04T05:22:30.318709+00:00",
+      "summary": {
+        "staging_nodes": 2,
+        "staging_edges": 1,
+        "audit_ok": true
+      },
+      "error": null
+    }
+  ]
+}

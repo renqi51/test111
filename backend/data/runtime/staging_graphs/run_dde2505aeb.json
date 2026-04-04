@@ -1,0 +1,127 @@
+{
+  "run_id": "run_dde2505aeb",
+  "document_id": "doc_06c43e541a",
+  "nodes": [
+    {
+      "id": "state_idle",
+      "label": "Idle",
+      "type": "initial",
+      "properties": {
+        "normalized_name": "idle",
+        "description": "The UE starts in an idle state before SIP registration.",
+        "confidence": 0.9,
+        "attributes": {}
+      },
+      "source_doc_id": "doc_06c43e541a",
+      "source_chunk_ids": [
+        "ev_000_doc_06c43e541a_c001"
+      ],
+      "source_worker": "worker_b",
+      "judge_score": 1.0,
+      "merge_status": "pending",
+      "created_at": "2026-04-04T05:55:52.704375"
+    },
+    {
+      "id": "state_registered",
+      "label": "Registered",
+      "type": "intermediate",
+      "properties": {
+        "normalized_name": "registered",
+        "description": "The UE is registered after successful SIP REGISTER signaling and authentication.",
+        "confidence": 0.85,
+        "attributes": {}
+      },
+      "source_doc_id": "doc_06c43e541a",
+      "source_chunk_ids": [
+        "ev_000_doc_06c43e541a_c001",
+        "ev_003_doc_06c43e541a_c002"
+      ],
+      "source_worker": "worker_b",
+      "judge_score": 1.0,
+      "merge_status": "pending",
+      "created_at": "2026-04-04T05:55:52.704375"
+    },
+    {
+      "id": "state_connected",
+      "label": "Connected",
+      "type": "intermediate",
+      "properties": {
+        "normalized_name": "connected",
+        "description": "The UE is connected after successful policy and profile validation following registration.",
+        "confidence": 0.8,
+        "attributes": {}
+      },
+      "source_doc_id": "doc_06c43e541a",
+      "source_chunk_ids": [
+        "ev_003_doc_06c43e541a_c002"
+      ],
+      "source_worker": "worker_b",
+      "judge_score": 1.0,
+      "merge_status": "pending",
+      "created_at": "2026-04-04T05:55:52.704375"
+    }
+  ],
+  "edges": [
+    {
+      "source": "state_idle",
+      "target": "state_registered",
+      "interaction": "SIP REGISTER signaling",
+      "properties": {
+        "guard": "successful authentication",
+        "action": "Send initial SIP REGISTER request and complete authentication and authorization procedures",
+        "confidence": 0.85,
+        "attributes": {}
+      },
+      "source_doc_id": "doc_06c43e541a",
+      "source_chunk_ids": [
+        "ev_000_doc_06c43e541a_c001",
+        "ev_003_doc_06c43e541a_c002"
+      ],
+      "source_worker": "worker_b",
+      "judge_score": 1.0,
+      "merge_status": "pending",
+      "created_at": "2026-04-04T05:55:52.704375"
+    },
+    {
+      "source": "state_registered",
+      "target": "state_connected",
+      "interaction": "policy and profile validation",
+      "properties": {
+        "guard": "successful policy and profile validation",
+        "action": "Validate policy and profile to enter connected state",
+        "confidence": 0.8,
+        "attributes": {}
+      },
+      "source_doc_id": "doc_06c43e541a",
+      "source_chunk_ids": [
+        "ev_003_doc_06c43e541a_c002"
+      ],
+      "source_worker": "worker_b",
+      "judge_score": 1.0,
+      "merge_status": "pending",
+      "created_at": "2026-04-04T05:55:52.704375"
+    },
+    {
+      "source": "state_registered",
+      "target": "state_idle",
+      "interaction": "deregistration or failure",
+      "properties": {
+        "guard": "",
+        "action": "Transition back to idle state",
+        "confidence": 0.7,
+        "attributes": {}
+      },
+      "source_doc_id": "doc_06c43e541a",
+      "source_chunk_ids": [
+        "ev_003_doc_06c43e541a_c002"
+      ],
+      "source_worker": "worker_b",
+      "judge_score": 1.0,
+      "merge_status": "pending",
+      "created_at": "2026-04-04T05:55:52.704375"
+    }
+  ],
+  "metadata": {
+    "recommended_worker": "worker_b"
+  }
+}
