@@ -28,6 +28,7 @@ fqdn_ims,ims.mnc<MNC>.mcc<MCC>.pub.3gppnetwork.org,FQDNPattern,IMS 相关公共 
 fqdn_wlan,wlan.mnc<MNC>.mcc<MCC>.3gppnetwork.org,FQDNPattern,WLAN 相关命名模板,3GPP TS 23.003,wlan FQDN pattern
 fqdn_epdg,epdg.epc.mnc<MNC>.mcc<MCC>.pub.3gppnetwork.org,FQDNPattern,ePDG 发现用 FQDN 模板,3GPP TS 23.003,ePDG FQDN pattern
 fqdn_n3iwf,n3iwf.5gc.mnc<MNC>.mcc<MCC>.pub.3gppnetwork.org,FQDNPattern,N3IWF 服务实例命名模板,3GPP TS 23.003,N3IWF FQDN pattern
+fqdn_og_nb,api.operator.mnc<MNC>.mcc<MCC>.example,FQDNPattern,Northbound API 网关 FQDN 示例模板,GSMA Open Gateway / 运营商实践,api.operator northbound FQDN
 doc_ts23003,3GPP TS 23.003,StandardDoc,编号、寻址与 FQDN 规则,3GPP 公开规范目录,TS 23.003
 doc_ts24502,3GPP TS 24.502,StandardDoc,5G 非 3GPP 接入相关流程,3GPP 公开规范目录,TS 24.502
 doc_ts23228,3GPP TS 23.228,StandardDoc,IMS 阶段描述与架构,3GPP 公开规范目录,TS 23.228

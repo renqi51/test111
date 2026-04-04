@@ -37,6 +37,8 @@ svc_open_gateway,proto_rest,uses_protocol
 svc_open_gateway,cap_icm,uses_capability
 svc_open_gateway,cap_oauth2,uses_capability
 svc_open_gateway,doc_gsma_og,governed_by
+svc_open_gateway,fqdn_og_nb,uses_naming_pattern
+fqdn_og_nb,doc_gsma_og,documented_in
 iface_nb_api,proto_https,uses_protocol
 iface_nb_api,proto_rest,uses_protocol
 iface_nb_api,plat_camara,implemented_via

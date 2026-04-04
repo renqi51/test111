@@ -153,6 +153,7 @@ export interface ProbeTargetResult {
   https_status: number | null;
   https_latency_ms: number | null;
   open_ports: number[];
+  open_udp_ports?: number[];
   service_hints: string[];
   tls_subject: string | null;
   tls_error: string | null;

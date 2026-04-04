@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -28,12 +29,52 @@ from app.schemas.probe import ProbeRunRequest
 from app.services import probe_service
 from app.services.prompt_registry_service import prompt_registry
 
+# Fallback when the graph has no Open Gateway naming pattern (must stay parameterized).
+DEFAULT_OPEN_GATEWAY_FQDN_TEMPLATE = "api.operator.mnc{mnc}.mcc{mcc}.example"
+
 
 def _pad_mnc(mnc: str) -> str:
     m = mnc.strip()
     if len(m) == 2:
         return f"0{m}"
     return m
+
+
+def _normalize_mcc(mcc: str) -> str:
+    s = mcc.strip()
+    if s.isdigit():
+        return s.zfill(3)
+    return s
+
+
+def _looks_like_fqdn_template(s: str) -> bool:
+    sl = s.lower()
+    if "." not in s:
+        return False
+    return ("mnc" in sl or "MNC" in s) and ("mcc" in sl or "MCC" in s) and ("{" in s or "<" in s)
+
+
+def fqdn_template_from_node(node: dict[str, Any]) -> str | None:
+    for key in ("template", "expression"):
+        v = node.get(key)
+        if isinstance(v, str) and _looks_like_fqdn_template(v):
+            return v.strip()
+    for key in ("en_identifier", "description", "label"):
+        v = node.get(key)
+        if isinstance(v, str) and _looks_like_fqdn_template(v):
+            return v.strip()
+    return None
+
+
+def render_fqdn_template(template: str, mcc: str, mnc3: str) -> str:
+    mcc_n = _normalize_mcc(mcc)
+    mnc_n = mnc3.strip()
+    out = template
+    out = re.sub(r"\{mcc\}", mcc_n, out, flags=re.IGNORECASE)
+    out = re.sub(r"\{mnc\}", mnc_n, out, flags=re.IGNORECASE)
+    out = re.sub(r"<MCC>", mcc_n, out, flags=re.IGNORECASE)
+    out = re.sub(r"<MNC>", mnc_n, out, flags=re.IGNORECASE)
+    return out
 
 
 def generate_rows(service: str, mcc: str, mnc: str) -> list[dict[str, Any]]:
@@ -83,16 +124,17 @@ def generate_rows(service: str, mcc: str, mnc: str) -> list[dict[str, Any]]:
             uniq.append(x)
         return uniq
 
-    def fqdn_for_pattern(pattern_id: str) -> str | None:
-        if pattern_id == "fqdn_ims":
-            return f"ims.mnc{mnc3}.mcc{mcc}.pub.3gppnetwork.org"
-        if pattern_id == "fqdn_wlan":
-            return f"wlan.mnc{mnc3}.mcc{mcc}.3gppnetwork.org"
-        if pattern_id == "fqdn_epdg":
-            return f"epdg.epc.mnc{mnc3}.mcc{mcc}.pub.3gppnetwork.org"
-        if pattern_id == "fqdn_n3iwf":
-            return f"n3iwf.5gc.mnc{mnc3}.mcc{mcc}.pub.3gppnetwork.org"
-        return None
+    def rendered_fqdn_for_pattern(pattern_id: str) -> str | None:
+        node = nodes.get(pattern_id)
+        if not node:
+            return None
+        ntype = node.get("type")
+        if ntype not in ("FQDNPattern", "NamingRule"):
+            return None
+        tmpl = fqdn_template_from_node(node)
+        if not tmpl:
+            return None
+        return render_fqdn_template(tmpl, mcc, mnc3)
 
     def find_targets(source: str, interaction: str) -> list[str]:
         return [e["target"] for e in edges if e.get("source") == source and e.get("interaction") == interaction]
@@ -131,7 +173,7 @@ def generate_rows(service: str, mcc: str, mnc: str) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
 
     for pid in pattern_ids:
-        fqdn = fqdn_for_pattern(pid)
+        fqdn = rendered_fqdn_for_pattern(pid)
         if not fqdn:
             continue
 
@@ -164,8 +206,7 @@ def generate_rows(service: str, mcc: str, mnc: str) -> list[dict[str, Any]]:
             }
         )
 
-    # Fallback for Open Gateway demo: there is no FQDNPattern seed edge in v1,
-    # but we still want an illustrative northbound endpoint candidate.
+    # Open Gateway: graph-first northbound FQDN template; parameterized fallback if missing.
     if not rows and svc_id == "svc_open_gateway":
         platforms = find_targets(svc_id, "implemented_via")
         docs = labels_of(
@@ -176,7 +217,19 @@ def generate_rows(service: str, mcc: str, mnc: str) -> list[dict[str, Any]]:
                 if nodes.get(did, {}).get("type") == "StandardDoc"
             ]
         )
-        fqdn = f"api.operator.mnc{mnc3}.mcc{mcc}.example"
+        tmpl: str | None = None
+        for src in [svc_id, *interfaces]:
+            for pid in find_targets(src, "uses_naming_pattern"):
+                n = nodes.get(pid)
+                if n and n.get("type") in ("FQDNPattern", "NamingRule"):
+                    tmpl = fqdn_template_from_node(n)
+                    if tmpl:
+                        break
+            if tmpl:
+                break
+        if not tmpl:
+            tmpl = DEFAULT_OPEN_GATEWAY_FQDN_TEMPLATE
+        fqdn = render_fqdn_template(tmpl, mcc, mnc3)
         rows.append(
             {
                 "candidate_fqdn": fqdn,
@@ -392,7 +445,13 @@ def _build_attack_paths(
             pivots.extend([f"fingerprint:{x}" for x in c.probe_status.get("service_hints", [])[:3]])
         pivots.extend([f"nf:{nf}" for nf in c.network_functions[:2]])
         likelihood = min(1.0, 0.35 + 0.45 * a.score + (0.1 if c.probe_status.get("https_ok") else 0.0))
-        status = "partially_validated" if c.probe_status.get("dns_ok") or c.probe_status.get("open_ports") else "hypothesis"
+        status = (
+            "partially_validated"
+            if c.probe_status.get("dns_ok")
+            or c.probe_status.get("open_ports")
+            or c.probe_status.get("open_udp_ports")
+            else "hypothesis"
+        )
         if c.probe_status.get("https_ok") is True:
             status = "validated"
         impact = "low"

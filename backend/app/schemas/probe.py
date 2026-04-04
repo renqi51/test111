@@ -18,7 +18,8 @@ class ProbeTargetResult(BaseModel):
     https_ok: bool | None = None
     https_status: int | None = None
     https_latency_ms: float | None = None
-    open_ports: list[int] = Field(default_factory=list)
+    open_ports: list[int] = Field(default_factory=list, description="TCP 开放端口")
+    open_udp_ports: list[int] = Field(default_factory=list, description="UDP 有响应端口（连通性探测）")
     service_hints: list[str] = Field(default_factory=list)
     tls_subject: str | None = None
     tls_error: str | None = None

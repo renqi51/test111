@@ -94,9 +94,17 @@
           </template>
         </el-table-column>
         <el-table-column prop="https_latency_ms" label="ms" width="72" />
-        <el-table-column label="开放端口" min-width="120">
+        <el-table-column label="开放端口" min-width="160">
           <template #default="{ row }">
-            <span class="ip-cell">{{ (row.open_ports || []).join(", ") || "—" }}</span>
+            <span class="ip-cell">
+              <template v-if="(row.open_ports || []).length || (row.open_udp_ports || []).length">
+                <span v-if="(row.open_ports || []).length">TCP {{ row.open_ports.join(", ") }}</span>
+                <span v-if="(row.open_udp_ports || []).length">
+                  {{ (row.open_ports || []).length ? " · " : "" }}UDP {{ row.open_udp_ports.join(", ") }}
+                </span>
+              </template>
+              <template v-else>—</template>
+            </span>
           </template>
         </el-table-column>
         <el-table-column label="服务指纹" min-width="140">
@@ -137,7 +145,8 @@
         </el-table-column>
         <el-table-column label="指纹" min-width="160">
           <template #default="{ row }">
-            Ports {{ row.open_ports.length ? row.open_ports.join(",") : "—" }} /
+            TCP {{ row.open_ports.length ? row.open_ports.join(",") : "—" }} · UDP
+            {{ row.open_udp_ports?.length ? row.open_udp_ports.join(",") : "—" }} /
             {{ row.service_hints.length ? row.service_hints.join(",") : "unknown" }}
           </template>
         </el-table-column>
@@ -230,6 +239,7 @@ const analysisRows = computed(() => {
       https_ok: c.probe_status?.https_ok,
       https_status: c.probe_status?.https_status,
       open_ports: c.probe_status?.open_ports ?? [],
+      open_udp_ports: c.probe_status?.open_udp_ports ?? [],
       service_hints: c.probe_status?.service_hints ?? [],
       source_kind: c.evidence?.source_kind ?? [],
     };
