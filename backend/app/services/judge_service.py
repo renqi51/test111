@@ -33,9 +33,9 @@ class JudgeService:
         conflicts: list[ConflictItem]
         recommended: str
         token_usage = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
-        model_name = settings.extraction_judge_model if settings.llm_base_url else "fallback-local"
+        model_name = settings.extraction_judge_model if settings.llm_has_endpoint else "fallback-local"
 
-        if settings.llm_provider and settings.llm_base_url:
+        if settings.llm_enabled:
             network_retries = 0
             semantic_retries = 0
             while True:

@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
 from app.utils.storage import init_runtime_from_seed_if_missing
-from app.api import graph, extract, extraction, exposure, reports, demo, experiments, skills, agent, mcp, probe, builder
+from app.api import graph, extract, extraction, exposure, reports, demo, experiments, skills, agent, mcp, probe, builder, graph_rag
 from app.repositories.graph_repository import get_graph_repository
 
 app = FastAPI(title=settings.app_name, version="0.1.0")
@@ -37,13 +37,14 @@ app.include_router(agent.router, prefix="/api")
 app.include_router(mcp.router, prefix="/api")
 app.include_router(probe.router, prefix="/api")
 app.include_router(builder.router, prefix="/api")
+app.include_router(graph_rag.router, prefix="/api")
 
 
 @app.get("/api/system/status")
 def system_status():
     # 简化版：前端用来显示 Neo4j / LLM / Agent 状态
     graph_backend = settings.graph_backend
-    llm_enabled = bool(settings.llm_provider and settings.llm_base_url)
+    llm_enabled = settings.llm_enabled
     neo4j_ok = False
     if graph_backend == "neo4j":
         try:

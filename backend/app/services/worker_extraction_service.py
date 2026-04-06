@@ -43,10 +43,10 @@ class WorkerExtractionService:
         open_questions: list[str]
         raw_response: dict
         engine = "fallback-rule"
-        model_name = settings.extraction_worker_model if settings.llm_base_url else "fallback-local"
+        model_name = settings.extraction_worker_model if settings.llm_has_endpoint else "fallback-local"
         token_usage = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
 
-        if settings.llm_provider and settings.llm_base_url:
+        if settings.llm_enabled:
             last_exc: Exception | None = None
             llm_result = None
             for _ in range(2):

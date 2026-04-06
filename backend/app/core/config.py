@@ -2,6 +2,7 @@
 from pathlib import Path
 
 from dotenv import load_dotenv
+from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 BACKEND_ROOT = Path(__file__).resolve().parents[2]
@@ -30,7 +31,9 @@ class Settings(BaseSettings):
     # LLM provider (OpenAI-compatible / Ollama-style)
     llm_provider: str | None = None  # "openai" | "ollama" | None
     llm_base_url: str | None = None
-    llm_api_key: str | None = None
+    # Optional full endpoint URL. If set, this value is used as-is without auto-joining.
+    llm_chat_completions_url: str | None = None
+    llm_api_key: SecretStr | None = None
     llm_model_name: str = "gpt-4.1-mini"
     llm_timeout: int = 60
 
@@ -57,6 +60,57 @@ class Settings(BaseSettings):
     kg_rule_dir: str = str(DATA_DIR / "rule")
     kg_chunk_size: int = 4000
     kg_chunk_overlap: int = 400
+
+    # GraphRAG (Milvus Lite + Embeddings)
+    graph_rag_milvus_uri: str = str(DATA_DIR / "milvus_graph_rag.db")
+    graph_rag_collection: str = "graph_rag_docs"
+    graph_rag_embedding_model: str = "text-embedding-3-small"
+    graph_rag_top_k: int = 15
+    # 若未单独配置，则默认复用 llm_base_url / llm_api_key
+    graph_rag_embedding_base_url: str | None = None
+    graph_rag_embedding_api_key: SecretStr | None = None
+
+    @staticmethod
+    def _secret_value(value: SecretStr | None) -> str | None:
+        if value is None:
+            return None
+        raw = value.get_secret_value().strip()
+        return raw or None
+
+    @staticmethod
+    def mask_secret(value: str | None, *, prefix: int = 6, suffix: int = 4) -> str:
+        if not value:
+            return "(empty)"
+        if len(value) <= prefix + suffix:
+            return "*" * len(value)
+        return f"{value[:prefix]}{'*' * (len(value) - prefix - suffix)}{value[-suffix:]}"
+
+    @property
+    def llm_api_key_value(self) -> str | None:
+        return self._secret_value(self.llm_api_key)
+
+    @property
+    def graph_rag_embedding_api_key_value(self) -> str | None:
+        return self._secret_value(self.graph_rag_embedding_api_key)
+
+    @property
+    def llm_api_key_masked(self) -> str:
+        return self.mask_secret(self.llm_api_key_value)
+
+    @property
+    def graph_rag_embedding_api_key_masked(self) -> str:
+        return self.mask_secret(self.graph_rag_embedding_api_key_value)
+
+    @property
+    def llm_has_endpoint(self) -> bool:
+        full_url = (self.llm_chat_completions_url or "").strip()
+        base_url = (self.llm_base_url or "").strip()
+        return bool(full_url or base_url)
+
+    @property
+    def llm_enabled(self) -> bool:
+        provider = (self.llm_provider or "").strip()
+        return bool(provider and self.llm_has_endpoint)
 
     # Authorized lab: DNS + HTTPS reachability (see app/services/probe_service.py)
     probe_enabled: bool = True

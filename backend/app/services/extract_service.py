@@ -167,7 +167,7 @@ def extract_rule_based(text: str) -> RuleExtractResult:
 async def extract_llm(text: str) -> LLMExtractPayload | None:
     """Call configured LLM provider and validate JSON payload."""
     # If LLM is not configured, treat as disabled and fallback to rule.
-    if not (settings.llm_provider and settings.llm_base_url):
+    if not settings.llm_enabled:
         return None
     provider = get_llm_provider()
     res = await provider.extract_structured(text)

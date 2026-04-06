@@ -68,7 +68,7 @@ class KGBuilderService:
 
     async def build_graph_from_input(self, *, dry_run: bool = False, max_files: int | None = None) -> dict[str, Any]:
         notes: list[str] = []
-        if not (settings.llm_provider and settings.llm_base_url):
+        if not settings.llm_enabled:
             notes.append("LLM is not configured; skip local import.")
             return LocalImportResponse(
                 files_processed=0,

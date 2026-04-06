@@ -352,7 +352,7 @@ def _sanitize_assessment(raw: dict[str, Any], fallback: ExposureAssessment) -> E
 
 
 async def _assess_candidate_with_llm(candidate: ExposureCandidate, fallback: ExposureAssessment) -> ExposureAssessment:
-    if not (settings.llm_provider and settings.llm_base_url):
+    if not settings.llm_enabled:
         return fallback
     prompt = prompt_registry.get("exposure_assessment")
     user_prompt = (
@@ -530,7 +530,7 @@ async def analyze_exposure(
         "probe_reachable": sum(1 for c in candidates if c.probe_status.get("https_ok") is True),
         "attack_paths": len(attack_paths),
         "validated_paths": sum(1 for p in attack_paths if p.validation_status == "validated"),
-        "llm_used": bool(use_llm and settings.llm_provider and settings.llm_base_url),
+        "llm_used": bool(use_llm and settings.llm_enabled),
     }
 
     response = ExposureAnalysisResponse(

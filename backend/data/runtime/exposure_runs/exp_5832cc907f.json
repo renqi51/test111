@@ -1,0 +1,178 @@
+{
+  "run_id": "exp_5832cc907f",
+  "created_at": "2026-04-04T13:01:02.741936+00:00",
+  "service": "IMS",
+  "mcc": "460",
+  "mnc": "001",
+  "patterns": [
+    {
+      "pattern_id": "pat_ims_00",
+      "service": "IMS",
+      "category": "fqdn",
+      "expression": "ims.mnc001.mcc460.pub.3gppnetwork.org",
+      "rationale": "Derived from 3GPP/GSMA naming pattern and graph relations.",
+      "evidence_docs": [
+        "3GPP TS 23.003"
+      ]
+    }
+  ],
+  "candidates": [
+    {
+      "candidate_id": "cand_000",
+      "candidate_fqdn": "ims.mnc001.mcc460.pub.3gppnetwork.org",
+      "service": "IMS",
+      "protocols": [
+        "SIP",
+        "DNS"
+      ],
+      "network_functions": [
+        "HSS",
+        "S-CSCF",
+        "I-CSCF",
+        "P-CSCF"
+      ],
+      "confidence": 0.63,
+      "evidence": {
+        "evidence_docs": [
+          "3GPP TS 23.003"
+        ],
+        "graph_paths": [
+          "IMS->uses_network_function->HSS",
+          "IMS->uses_network_function->S-CSCF",
+          "IMS->uses_network_function->I-CSCF",
+          "IMS->uses_network_function->P-CSCF"
+        ],
+        "related_risks": [
+          "暴露式 FQDN 可能提升资产可发现性"
+        ],
+        "source_kind": [
+          "standard_pattern",
+          "graph_inference",
+          "probe_observation"
+        ]
+      },
+      "probe_status": {
+        "target": "ims.mnc001.mcc460.pub.3gppnetwork.org",
+        "host": "ims.mnc001.mcc460.pub.3gppnetwork.org",
+        "permitted": false,
+        "policy_reason": "allowlist_empty_configure_EXPOSURE_PROBE_ALLOWLIST_SUFFIXES",
+        "dns_ok": false,
+        "dns_addresses": [],
+        "https_ok": null,
+        "https_status": null,
+        "https_latency_ms": null,
+        "open_ports": [],
+        "open_udp_ports": [],
+        "service_hints": [],
+        "tls_subject": null,
+        "tls_error": null,
+        "error": null
+      }
+    }
+  ],
+  "assessments": [
+    {
+      "candidate_id": "cand_000",
+      "risk_level": "medium",
+      "score": 0.5,
+      "summary": "The candidate host ims.mnc001.mcc460.pub.3gppnetwork.org exposes IMS network functions including HSS, S-CSCF, I-CSCF, and P-CSCF with moderate confidence (0.63). The FQDN is publicly resolvable but DNS resolution failed in the probe, and no open ports or services were detected. The exposure of IMS components increases asset discoverability, but lack of DNS resolution and open ports reduces immediate exploitation likelihood.",
+      "conservative_explanation": "While the candidate host matches standard IMS network functions and is identified through graph inference and standard patterns, the probe failed DNS resolution and detected no open services, limiting direct attack vectors. However, the public FQDN presence inherently increases exposure risk by enabling potential reconnaissance.",
+      "attack_surface_notes": [
+        "Publicly exposed IMS FQDN increases asset discoverability.",
+        "Presence of critical IMS network functions (HSS, S-CSCF, I-CSCF, P-CSCF) implies sensitive telecom infrastructure.",
+        "No DNS resolution or open ports detected reduces immediate attack surface.",
+        "Protocols SIP and DNS are associated but no active services confirmed."
+      ],
+      "missing_evidence": [
+        "Successful DNS resolution and IP address mapping.",
+        "Open ports or active service banners.",
+        "TLS certificate details or HTTPS service status.",
+        "Additional probe observations confirming service availability."
+      ],
+      "evidence_refs": [
+        "3GPP TS 23.003",
+        "IMS->uses_network_function->HSS",
+        "IMS->uses_network_function->S-CSCF",
+        "IMS->uses_network_function->I-CSCF",
+        "IMS->uses_network_function->P-CSCF",
+        "暴露式 FQDN 可能提升资产可发现性",
+        "probe_status data for ims.mnc001.mcc460.pub.3gppnetwork.org"
+      ],
+      "model_name": "gpt-4.1-mini",
+      "fallback_used": false
+    }
+  ],
+  "attack_paths": [
+    {
+      "path_id": "path_ims_00",
+      "candidate_id": "cand_000",
+      "entrypoint": "ims.mnc001.mcc460.pub.3gppnetwork.org",
+      "pivots": [
+        "nf:HSS",
+        "nf:S-CSCF"
+      ],
+      "target_asset": "HSS",
+      "likelihood": 0.575,
+      "impact": "low",
+      "prerequisites": [
+        "authorized laboratory scope",
+        "target in probe allowlist/open policy"
+      ],
+      "evidence_refs": [
+        "3GPP TS 23.003",
+        "IMS->uses_network_function->HSS",
+        "IMS->uses_network_function->S-CSCF",
+        "IMS->uses_network_function->I-CSCF",
+        "IMS->uses_network_function->P-CSCF",
+        "暴露式 FQDN 可能提升资产可发现性",
+        "probe_status data for ims.mnc001.mcc460.pub.3gppnetwork.org"
+      ],
+      "validation_status": "hypothesis"
+    }
+  ],
+  "probe_run": {
+    "run_id": "48e5d16b-ff04-4e4a-95a4-53bb94560620",
+    "started_at": "2026-04-04T13:00:53.920584+00:00",
+    "finished_at": "2026-04-04T13:00:53.923418+00:00",
+    "probe_mode": "allowlist",
+    "results": [
+      {
+        "target": "ims.mnc001.mcc460.pub.3gppnetwork.org",
+        "host": "ims.mnc001.mcc460.pub.3gppnetwork.org",
+        "permitted": false,
+        "policy_reason": "allowlist_empty_configure_EXPOSURE_PROBE_ALLOWLIST_SUFFIXES",
+        "dns_ok": false,
+        "dns_addresses": [],
+        "https_ok": null,
+        "https_status": null,
+        "https_latency_ms": null,
+        "open_ports": [],
+        "open_udp_ports": [],
+        "service_hints": [],
+        "tls_subject": null,
+        "tls_error": null,
+        "error": null
+      }
+    ],
+    "summary": {
+      "total": 1,
+      "permitted": 0,
+      "dns_ok": 0,
+      "https_ok": 0,
+      "tcp_open": 0,
+      "udp_open": 0,
+      "sip_hint": 0,
+      "gtp_hint": 0,
+      "ipsec_hint": 0
+    }
+  },
+  "report_path": "data\\runtime\\exposure_runs\\exp_5832cc907f.md",
+  "summary": {
+    "total_candidates": 1,
+    "high_or_critical": 0,
+    "probe_reachable": 0,
+    "attack_paths": 1,
+    "validated_paths": 0,
+    "llm_used": true
+  }
+}

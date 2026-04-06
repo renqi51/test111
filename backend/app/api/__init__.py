@@ -1,4 +1,4 @@
-from . import graph, extract, extraction, exposure, reports, demo, experiments, skills, agent, mcp, probe, builder
+from . import graph, extract, extraction, exposure, reports, demo, experiments, skills, agent, mcp, probe, builder, graph_rag
 
 __all__ = [
     "graph",
@@ -13,4 +13,5 @@ __all__ = [
     "mcp",
     "probe",
     "builder",
+    "graph_rag",
 ]

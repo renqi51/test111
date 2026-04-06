@@ -248,7 +248,7 @@ class LLMOrchestratorService:
             }
         return ExtractionStatusResponse(
             llm={
-                "enabled": bool(settings.llm_provider and settings.llm_base_url),
+                "enabled": settings.llm_enabled,
                 "provider": settings.llm_provider,
                 "model_worker": settings.extraction_worker_model,
                 "model_judge": settings.extraction_judge_model,
