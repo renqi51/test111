@@ -14,8 +14,11 @@
     "cytoscape": "^3.30.3",
     "echarts": "^5.6.0",
     "element-plus": "^2.9.1",
+    "graphology": "^0.26.0",
+    "graphology-layout": "^0.6.1",
     "markdown-it": "^14.1.0",
     "pinia": "^2.3.0",
+    "sigma": "^3.0.2",
     "vue": "^3.5.13",
     "vue-router": "^4.5.0"
   },

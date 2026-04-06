@@ -29,6 +29,10 @@
           <el-icon><Document /></el-icon>
           <span>Agent / Skill</span>
         </el-menu-item>
+        <el-menu-item index="/graph-rag">
+          <el-icon><ChatLineSquare /></el-icon>
+          <span>GraphRAG</span>
+        </el-menu-item>
         <el-menu-item index="/exposure">
           <el-icon><Aim /></el-icon>
           <span>候选暴露面</span>
@@ -64,7 +68,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { useRoute } from "vue-router";
-import { Odometer, Share, Document, Aim, Cpu, Tickets } from "@element-plus/icons-vue";
+import { Odometer, Share, Document, Aim, Cpu, Tickets, ChatLineSquare } from "@element-plus/icons-vue";
 
 const route = useRoute();
 const active = computed(() => (route.path === "/" ? "/" : route.path));

@@ -6,6 +6,27 @@
         <p class="page-sub">Cytoscape.js · 类型着色 / 形状 · 过滤 · 导出（PNG / JSON）</p>
       </div>
       <div class="cy-toolbar">
+        <el-input v-model="subgraphQuery" placeholder="子图关键词（如 ims / oauth / ts 23.402）" clearable style="width: 280px" />
+        <el-popover trigger="click" placement="bottom" :width="320">
+          <template #reference>
+            <el-button>高级设置</el-button>
+          </template>
+          <div class="adv-grid">
+            <div class="adv-row">
+              <span class="adv-label">seed_limit</span>
+              <el-input-number v-model="seedLimit" :min="5" :max="200" :step="5" controls-position="right" />
+            </div>
+            <div class="adv-row">
+              <span class="adv-label">max_edges</span>
+              <el-input-number v-model="maxEdges" :min="20" :max="3000" :step="20" controls-position="right" />
+            </div>
+            <p class="adv-tip">默认值：seed_limit=20，max_edges=120。值越大越全，但也越容易卡。</p>
+          </div>
+        </el-popover>
+        <el-button type="success" @click="loadSubgraph">加载子图</el-button>
+        <el-button @click="reloadFullGraph">全量图（可能很卡）</el-button>
+        <el-switch v-model="autoExpandOnTap" inline-prompt active-text="点选扩展" inactive-text="不扩展" />
+        <el-input-number v-model="neighborDepth" :min="1" :max="2" :step="1" size="default" controls-position="right" />
         <el-input v-model="search" placeholder="搜索节点 label / id" clearable style="width: 220px" />
         <el-select v-model="layoutName" placeholder="布局" style="width: 140px">
           <el-option label="Grid" value="grid" />
@@ -15,7 +36,7 @@
         <el-button type="primary" @click="applyLayout">应用布局</el-button>
         <el-button @click="exportPng">导出 PNG</el-button>
         <el-button @click="exportJson">导出 JSON</el-button>
-        <el-button @click="reload">刷新数据</el-button>
+        <el-button @click="reloadCurrent">刷新当前数据</el-button>
       </div>
     </div>
 
@@ -91,6 +112,14 @@ const layoutName = ref<"grid" | "breadthfirst" | "cose">("cose");
 const typeFilter = ref<string[]>([]);
 const edgeFilter = ref<string[]>([]);
 const selected = ref<GraphNode | null>(null);
+let searchTimer: number | null = null;
+const subgraphQuery = ref("ims");
+const seedLimit = ref(20);
+const maxEdges = ref(120);
+const autoExpandOnTap = ref(true);
+const neighborDepth = ref(1);
+const expandedNodeIds = ref<Set<string>>(new Set());
+let expanding = false;
 
 const allTypes = computed(() => {
   const s = new Set(store.nodes.map((n) => n.type));
@@ -176,10 +205,14 @@ function buildElements(nodes: GraphNode[], edges: GraphEdge[]) {
 function applyLayout() {
   if (!cy) return;
   const name = layoutName.value;
+  // 兼顾观感与性能：中小图保留动画，大图自动关闭动画防止卡顿。
+  const nodeCount = cy.nodes().length;
+  const edgeCount = cy.edges().length;
+  const shouldAnimate = nodeCount <= 600 && edgeCount <= 1200;
   const layout = cy.layout({
     name,
-    animate: true,
-    animationDuration: 500,
+    animate: shouldAnimate,
+    animationDuration: shouldAnimate ? 420 : 0,
     fit: true,
     padding: 24,
     randomize: name === "cose",
@@ -230,11 +263,13 @@ function bindCy() {
           "target-arrow-shape": "triangle",
           "curve-style": "bezier",
           "arrow-scale": 0.9,
-          label: "data(interaction)",
+          label: "",
           "font-size": 8,
           color: "#9db0d0",
         },
       },
+      { selector: "edge.show-label", style: { label: "data(interaction)" } },
+      { selector: ".hidden", style: { display: "none" } },
       { selector: "node:selected", style: { "border-width": 3, "border-color": "#ffffff" } },
       { selector: "node.hl", style: { "border-width": 3, "border-color": "#ffd04b" } },
     ],
@@ -243,11 +278,66 @@ function bindCy() {
   cy.on("tap", "node", (evt) => {
     const raw = evt.target.data("raw") as GraphNode;
     selected.value = raw;
+    void expandNeighborsFromTap(raw.id);
   });
   cy.on("tap", (evt) => {
     if (evt.target === cy) selected.value = null;
   });
+  cy.on("zoom", () => {
+    updateEdgeLabelVisibility();
+  });
+  applyFilters();
+  updateEdgeLabelVisibility();
   applyLayout();
+}
+
+async function expandNeighborsFromTap(nodeId: string) {
+  if (!autoExpandOnTap.value || expanding) return;
+  const id = (nodeId || "").trim();
+  if (!id || expandedNodeIds.value.has(id)) return;
+  try {
+    expanding = true;
+    await store.loadNeighbors(id, neighborDepth.value);
+    expandedNodeIds.value.add(id);
+    await nextTick();
+    bindCy();
+  } catch {
+    // 错误已由 store 记录到 error，这里不重复提示
+  } finally {
+    expanding = false;
+  }
+}
+
+function updateEdgeLabelVisibility() {
+  if (!cy) return;
+  const shouldShow = cy.zoom() >= 1.3 && cy.edges().length <= 1500;
+  if (shouldShow) cy.edges().addClass("show-label");
+  else cy.edges().removeClass("show-label");
+}
+
+function applyFilters() {
+  if (!cy) return;
+  const nf = typeFilter.value;
+  const useType = nf.length === 0 || nf.length === allTypes.value.length ? null : new Set(nf);
+  const ef = edgeFilter.value;
+  const useEdge = ef.length === 0 ? null : new Set(ef);
+
+  cy.batch(() => {
+    cy.nodes().forEach((n) => {
+      const raw = n.data("raw") as GraphNode;
+      const hidden = !!useType && !useType.has(raw.type);
+      n.toggleClass("hidden", hidden);
+    });
+
+    cy.edges().forEach((e) => {
+      const source = e.source();
+      const target = e.target();
+      const interaction = String(e.data("interaction") || "");
+      const hiddenByNode = source.hasClass("hidden") || target.hasClass("hidden");
+      const hiddenByEdgeType = !!useEdge && !useEdge.has(interaction);
+      e.toggleClass("hidden", hiddenByNode || hiddenByEdgeType);
+    });
+  });
 }
 
 function exportPng() {
@@ -270,33 +360,63 @@ function exportJson() {
   URL.revokeObjectURL(url);
 }
 
-async function reload() {
+async function reloadCurrent() {
+  if (subgraphQuery.value.trim()) await loadSubgraph();
+  else await reloadFullGraph();
+}
+
+async function reloadFullGraph() {
   await store.load();
+  expandedNodeIds.value.clear();
+  selected.value = null;
+  await nextTick();
+  bindCy();
+}
+
+async function loadSubgraph() {
+  const q = subgraphQuery.value.trim();
+  if (!q) return;
+  await store.loadSubgraphByQuery(q, {
+    seedLimit: seedLimit.value,
+    maxEdges: maxEdges.value,
+  });
+  expandedNodeIds.value.clear();
+  selected.value = null;
   await nextTick();
   bindCy();
 }
 
 watch([typeFilter, edgeFilter], async () => {
   await nextTick();
-  bindCy();
+  applyFilters();
+  updateEdgeLabelVisibility();
 });
 
 watch(search, (q) => {
   if (!cy) return;
-  cy.nodes().removeClass("hl");
-  if (!q.trim()) return;
-  const qq = q.trim().toLowerCase();
-  cy.nodes().forEach((n) => {
-    const raw = n.data("raw") as GraphNode;
-    if (raw.id.toLowerCase().includes(qq) || raw.label.toLowerCase().includes(qq)) n.addClass("hl");
-  });
+  if (searchTimer !== null) window.clearTimeout(searchTimer);
+  searchTimer = window.setTimeout(() => {
+    if (!cy) return;
+    cy.nodes().removeClass("hl");
+    if (!q.trim()) return;
+    const qq = q.trim().toLowerCase();
+    cy.nodes().forEach((n) => {
+      const raw = n.data("raw") as GraphNode;
+      if (raw.id.toLowerCase().includes(qq) || raw.label.toLowerCase().includes(qq)) n.addClass("hl");
+    });
+  }, 220);
 });
 
 onMounted(async () => {
-  await store.load();
+  const q = (route.query.q as string | undefined)?.trim();
+  if (q) subgraphQuery.value = q;
+  if (subgraphQuery.value.trim()) {
+    await loadSubgraph();
+  } else {
+    await reloadFullGraph();
+  }
+  if (store.nodes.length > 1000) layoutName.value = "grid";
   if (typeFilter.value.length === 0) typeFilter.value = [...allTypes.value];
-  await nextTick();
-  bindCy();
   const sel = route.query.select as string | undefined;
   if (sel) {
     const n = store.nodes.find((x) => x.id === sel);
@@ -305,6 +425,7 @@ onMounted(async () => {
 });
 
 onUnmounted(() => {
+  if (searchTimer !== null) window.clearTimeout(searchTimer);
   cy?.destroy();
   cy = null;
 });
@@ -328,6 +449,26 @@ onUnmounted(() => {
   flex-wrap: wrap;
   gap: 8px;
   align-items: center;
+}
+.adv-grid {
+  display: grid;
+  gap: 10px;
+}
+.adv-row {
+  display: grid;
+  grid-template-columns: 90px 1fr;
+  align-items: center;
+  gap: 8px;
+}
+.adv-label {
+  font-size: 12px;
+  color: var(--muted);
+}
+.adv-tip {
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.35;
 }
 .row {
   flex: 1;
