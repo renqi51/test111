@@ -1,0 +1,592 @@
+{
+  "run_id": "exp_b4771a06a3",
+  "created_at": "2026-04-06T07:23:45.590197+00:00",
+  "service": "IMS",
+  "mcc": "460",
+  "mnc": "001",
+  "patterns": [
+    {
+      "pattern_id": "pat_ims_00",
+      "service": "IMS",
+      "category": "fqdn",
+      "expression": "ims.mnc001.mcc460.pub.3gppnetwork.org",
+      "rationale": "Derived from 3GPP/GSMA naming pattern and graph relations.",
+      "evidence_docs": [
+        "3GPP TS 23.003"
+      ]
+    },
+    {
+      "pattern_id": "pat_ims_01",
+      "service": "IMS",
+      "category": "fqdn",
+      "expression": "n3iwf.5gc.mnc001.mcc460.pub.3gppnetwork.org",
+      "rationale": "Derived from 3GPP/GSMA naming pattern and graph relations.",
+      "evidence_docs": [
+        "3GPP TS 24.502",
+        "3GPP TS 23.003"
+      ]
+    },
+    {
+      "pattern_id": "pat_ims_02",
+      "service": "IMS",
+      "category": "fqdn",
+      "expression": "epdg.epc.mnc001.mcc460.pub.3gppnetwork.org",
+      "rationale": "Derived from 3GPP/GSMA naming pattern and graph relations.",
+      "evidence_docs": []
+    }
+  ],
+  "candidates": [
+    {
+      "candidate_id": "cand_000",
+      "candidate_fqdn": "ims.mnc001.mcc460.pub.3gppnetwork.org",
+      "service": "IMS",
+      "protocols": [
+        "OAuth 2.0",
+        "TURN",
+        "ICE",
+        "HTTPS",
+        "SIP Digest",
+        "TLS",
+        "SIP",
+        "S-NAPTR procedure",
+        "RRC",
+        "NGAP",
+        "GTP-U",
+        "IGMP",
+        "EAP",
+        "N4",
+        "IPv6 multi-homed routing rule",
+        "IPv6 Router Advertisement",
+        "NAS-SM",
+        "MLD",
+        "L2TP",
+        "PMIP",
+        "GTPv2",
+        "S121 Application Protocol",
+        "x-3gpp-mme:x-s10",
+        "EAP-5G",
+        "GRE",
+        "EAP-AKA'",
+        "EAP-AKA",
+        "UDP",
+        "IPSec",
+        "IKEv2",
+        "DNS",
+        "EAP-3GPP-LimitedService method",
+        "OCSP",
+        "EAP MD5",
+        "HTTP",
+        "IKEv2 ID_FQDN",
+        "Diameter",
+        "ESP",
+        "MOBIKE",
+        "WLCP",
+        "DSMIPv6",
+        "PMIPv6",
+        "GTP",
+        "MIPv4",
+        "GTP-C",
+        "5G AKA",
+        "EAP-TTLS",
+        "EAP TLS",
+        "S-NAPTR service parameter x-3gpp-amf:x-n26",
+        "NAS-MM",
+        "NG Application Protocol (NG-AP)",
+        "NAS Registration Procedure",
+        "N26",
+        "NBA",
+        "ipsec-3gpp",
+        "TCP",
+        "UMTS/EPS AKA"
+      ],
+      "network_functions": [
+        "eP-CSCF",
+        "GGSN",
+        "E-UTRAN",
+        "NG-RAN",
+        "PCF",
+        "SMF",
+        "PGW-C",
+        "Serving GW",
+        "MME",
+        "N3IWF",
+        "ePDG",
+        "UDM",
+        "AMF",
+        "HSS",
+        "S-CSCF",
+        "I-CSCF",
+        "P-CSCF"
+      ],
+      "confidence": 0.63,
+      "evidence": {
+        "evidence_docs": [
+          "3GPP TS 23.003"
+        ],
+        "graph_paths": [
+          "IMS->uses_network_function->eP-CSCF",
+          "IMS->uses_network_function->GGSN",
+          "IMS->uses_network_function->E-UTRAN",
+          "IMS->uses_network_function->NG-RAN"
+        ],
+        "related_risks": [
+          "暴露式 FQDN 可能提升资产可发现性"
+        ],
+        "source_kind": [
+          "standard_pattern",
+          "graph_inference",
+          "probe_observation"
+        ]
+      },
+      "probe_status": {
+        "target": "ims.mnc001.mcc460.pub.3gppnetwork.org",
+        "host": "ims.mnc001.mcc460.pub.3gppnetwork.org",
+        "permitted": false,
+        "policy_reason": "allowlist_empty_configure_EXPOSURE_PROBE_ALLOWLIST_SUFFIXES",
+        "dns_ok": false,
+        "dns_addresses": [],
+        "https_ok": null,
+        "https_status": null,
+        "https_latency_ms": null,
+        "open_ports": [],
+        "open_udp_ports": [],
+        "service_hints": [],
+        "tls_subject": null,
+        "tls_error": null,
+        "error": null
+      }
+    },
+    {
+      "candidate_id": "cand_001",
+      "candidate_fqdn": "n3iwf.5gc.mnc001.mcc460.pub.3gppnetwork.org",
+      "service": "IMS",
+      "protocols": [
+        "OAuth 2.0",
+        "TURN",
+        "ICE",
+        "HTTPS",
+        "SIP Digest",
+        "TLS",
+        "SIP",
+        "S-NAPTR procedure",
+        "RRC",
+        "NGAP",
+        "GTP-U",
+        "IGMP",
+        "EAP",
+        "N4",
+        "IPv6 multi-homed routing rule",
+        "IPv6 Router Advertisement",
+        "NAS-SM",
+        "MLD",
+        "L2TP",
+        "PMIP",
+        "GTPv2",
+        "S121 Application Protocol",
+        "x-3gpp-mme:x-s10",
+        "EAP-5G",
+        "GRE",
+        "EAP-AKA'",
+        "EAP-AKA",
+        "UDP",
+        "IPSec",
+        "IKEv2",
+        "DNS",
+        "EAP-3GPP-LimitedService method",
+        "OCSP",
+        "EAP MD5",
+        "HTTP",
+        "IKEv2 ID_FQDN",
+        "Diameter",
+        "ESP",
+        "MOBIKE",
+        "WLCP",
+        "DSMIPv6",
+        "PMIPv6",
+        "GTP",
+        "MIPv4",
+        "GTP-C",
+        "5G AKA",
+        "EAP-TTLS",
+        "EAP TLS",
+        "S-NAPTR service parameter x-3gpp-amf:x-n26",
+        "NAS-MM",
+        "NG Application Protocol (NG-AP)",
+        "NAS Registration Procedure",
+        "N26",
+        "NBA",
+        "ipsec-3gpp",
+        "TCP",
+        "UMTS/EPS AKA"
+      ],
+      "network_functions": [
+        "N3IWF"
+      ],
+      "confidence": 0.71,
+      "evidence": {
+        "evidence_docs": [
+          "3GPP TS 24.502",
+          "3GPP TS 23.003"
+        ],
+        "graph_paths": [
+          "IMS->uses_network_function->N3IWF"
+        ],
+        "related_risks": [
+          "暴露式 FQDN 可能提升资产可发现性"
+        ],
+        "source_kind": [
+          "standard_pattern",
+          "graph_inference",
+          "probe_observation"
+        ]
+      },
+      "probe_status": {
+        "target": "n3iwf.5gc.mnc001.mcc460.pub.3gppnetwork.org",
+        "host": "n3iwf.5gc.mnc001.mcc460.pub.3gppnetwork.org",
+        "permitted": false,
+        "policy_reason": "allowlist_empty_configure_EXPOSURE_PROBE_ALLOWLIST_SUFFIXES",
+        "dns_ok": false,
+        "dns_addresses": [],
+        "https_ok": null,
+        "https_status": null,
+        "https_latency_ms": null,
+        "open_ports": [],
+        "open_udp_ports": [],
+        "service_hints": [],
+        "tls_subject": null,
+        "tls_error": null,
+        "error": null
+      }
+    },
+    {
+      "candidate_id": "cand_002",
+      "candidate_fqdn": "epdg.epc.mnc001.mcc460.pub.3gppnetwork.org",
+      "service": "IMS",
+      "protocols": [
+        "OAuth 2.0",
+        "TURN",
+        "ICE",
+        "HTTPS",
+        "SIP Digest",
+        "TLS",
+        "SIP",
+        "S-NAPTR procedure",
+        "RRC",
+        "NGAP",
+        "GTP-U",
+        "IGMP",
+        "EAP",
+        "N4",
+        "IPv6 multi-homed routing rule",
+        "IPv6 Router Advertisement",
+        "NAS-SM",
+        "MLD",
+        "L2TP",
+        "PMIP",
+        "GTPv2",
+        "S121 Application Protocol",
+        "x-3gpp-mme:x-s10",
+        "EAP-5G",
+        "GRE",
+        "EAP-AKA'",
+        "EAP-AKA",
+        "UDP",
+        "IPSec",
+        "IKEv2",
+        "DNS",
+        "EAP-3GPP-LimitedService method",
+        "OCSP",
+        "EAP MD5",
+        "HTTP",
+        "IKEv2 ID_FQDN",
+        "Diameter",
+        "ESP",
+        "MOBIKE",
+        "WLCP",
+        "DSMIPv6",
+        "PMIPv6",
+        "GTP",
+        "MIPv4",
+        "GTP-C",
+        "5G AKA",
+        "EAP-TTLS",
+        "EAP TLS",
+        "S-NAPTR service parameter x-3gpp-amf:x-n26",
+        "NAS-MM",
+        "NG Application Protocol (NG-AP)",
+        "NAS Registration Procedure",
+        "N26",
+        "NBA",
+        "ipsec-3gpp",
+        "TCP",
+        "UMTS/EPS AKA"
+      ],
+      "network_functions": [
+        "ePDG"
+      ],
+      "confidence": 0.55,
+      "evidence": {
+        "evidence_docs": [],
+        "graph_paths": [
+          "IMS->uses_network_function->ePDG"
+        ],
+        "related_risks": [
+          "暴露式 FQDN 可能提升资产可发现性"
+        ],
+        "source_kind": [
+          "standard_pattern",
+          "graph_inference",
+          "probe_observation"
+        ]
+      },
+      "probe_status": {
+        "target": "epdg.epc.mnc001.mcc460.pub.3gppnetwork.org",
+        "host": "epdg.epc.mnc001.mcc460.pub.3gppnetwork.org",
+        "permitted": false,
+        "policy_reason": "allowlist_empty_configure_EXPOSURE_PROBE_ALLOWLIST_SUFFIXES",
+        "dns_ok": false,
+        "dns_addresses": [],
+        "https_ok": null,
+        "https_status": null,
+        "https_latency_ms": null,
+        "open_ports": [],
+        "open_udp_ports": [],
+        "service_hints": [],
+        "tls_subject": null,
+        "tls_error": null,
+        "error": null
+      }
+    }
+  ],
+  "assessments": [
+    {
+      "candidate_id": "cand_000",
+      "risk_level": "medium",
+      "score": 0.5,
+      "summary": "The candidate IMS host ims.mnc001.mcc460.pub.3gppnetwork.org exposes multiple IMS-related network functions and protocols, increasing its attack surface. The FQDN is publicly discoverable, which may enhance asset visibility. However, probe attempts did not resolve DNS or identify open ports, limiting direct evidence of exploitable exposure.",
+      "conservative_explanation": "While the candidate host supports numerous IMS protocols and network functions that are critical in 3GPP networks, the lack of DNS resolution and open ports in probe observations reduces immediate exposure risk. The public FQDN presence suggests potential discoverability, warranting caution. Due to incomplete probe success and moderate confidence (0.63), a medium risk rating is assigned conservatively.",
+      "attack_surface_notes": [
+        "Exposure of multiple IMS network functions (eP-CSCF, GGSN, E-UTRAN, NG-RAN, etc.) increases complexity and potential vulnerabilities.",
+        "Support for numerous protocols including SIP, Diameter, GTP variants, EAP methods, and security protocols (TLS, IPSec, IKEv2) expands attack vectors.",
+        "Publicly exposed FQDN under 3gppnetwork.org domain may facilitate asset discovery by adversaries."
+      ],
+      "missing_evidence": [
+        "Successful DNS resolution and IP address mapping.",
+        "Open ports or reachable services to confirm active exposure.",
+        "TLS certificate details or HTTPS service validation.",
+        "Direct vulnerability or exploit evidence."
+      ],
+      "evidence_refs": [
+        "3GPP TS 23.003",
+        "Graph paths: IMS->uses_network_function->eP-CSCF, GGSN, E-UTRAN, NG-RAN",
+        "Probe observation: DNS resolution failed, no open ports detected",
+        "Related risk: '暴露式 FQDN 可能提升资产可发现性'"
+      ],
+      "model_name": "gpt-4.1-mini-2025-04-14",
+      "fallback_used": false
+    },
+    {
+      "candidate_id": "cand_001",
+      "risk_level": "medium",
+      "score": 0.6,
+      "summary": "The candidate host n3iwf.5gc.mnc001.mcc460.pub.3gppnetwork.org is identified as an N3IWF network function supporting IMS with multiple protocols including security-related ones such as TLS, IPSec, and EAP variants. The FQDN exposure may increase asset discoverability. Probe observations indicate the host is not permitted for probing, DNS resolution failed, and no open ports were detected, limiting direct verification of service exposure or vulnerabilities.",
+      "conservative_explanation": "Given the exposed FQDN and the critical role of N3IWF in 5G IMS architecture, there is a moderate risk due to potential asset discoverability and attack surface. However, lack of DNS resolution and no open ports observed reduce immediate exploitation likelihood. The confidence score of 0.71 supports moderate certainty in the candidate's role and exposure. Absence of probe success and open services warrants cautious interpretation, hence a medium risk rating.",
+      "attack_surface_notes": [
+        "Exposed FQDN increases asset discoverability risk.",
+        "Supports multiple protocols including security-sensitive ones (TLS, IPSec, EAP variants).",
+        "N3IWF function is critical in 5G IMS for interworking with untrusted non-3GPP access.",
+        "No open ports or successful DNS resolution observed, limiting direct attack vectors currently."
+      ],
+      "missing_evidence": [
+        "Successful DNS resolution and IP address mapping.",
+        "Open ports and service banners to verify actual service exposure.",
+        "TLS certificate details and validation status.",
+        "Probe results confirming protocol responsiveness and security posture."
+      ],
+      "evidence_refs": [
+        "3GPP TS 24.502",
+        "3GPP TS 23.003",
+        "IMS->uses_network_function->N3IWF",
+        "暴露式 FQDN 可能提升资产可发现性",
+        "probe_status: permitted=false, dns_ok=false, open_ports=[]"
+      ],
+      "model_name": "gpt-4.1-mini-2025-04-14",
+      "fallback_used": false
+    },
+    {
+      "candidate_id": "cand_002",
+      "risk_level": "medium",
+      "score": 0.55,
+      "summary": "The candidate host epdg.epc.mnc001.mcc460.pub.3gppnetwork.org is identified as an ePDG network function used in IMS with moderate confidence (0.55). The presence of a fully qualified domain name (FQDN) that is publicly resolvable increases asset discoverability risk. Probe observations indicate that DNS resolution failed and no open ports or services were detected, limiting direct exposure evidence. The lack of DNS and service responsiveness reduces immediate exploitation likelihood but does not eliminate risk due to potential indirect exposure and the critical role of ePDG in IMS.",
+      "conservative_explanation": "Given the moderate confidence and the publicly exposed FQDN, there is a non-negligible risk of asset discoverability which could aid attackers in reconnaissance. However, the absence of DNS resolution and open ports in probe data suggests limited current attack surface exposure. Therefore, a medium risk level is assigned conservatively to reflect potential exposure without confirmed active vulnerabilities or reachable services.",
+      "attack_surface_notes": [
+        "Publicly exposed FQDN increases asset discoverability risk.",
+        "ePDG is a critical IMS network function handling secure IPsec tunnels for WiFi offload.",
+        "No DNS resolution or open ports detected in probe observations, limiting direct attack vectors.",
+        "Multiple protocols supported including security protocols (IPSec, IKEv2, TLS) indicating complex attack surface if reachable."
+      ],
+      "missing_evidence": [
+        "DNS resolution success and IP addresses",
+        "Open ports and reachable services confirmation",
+        "TLS certificate details and validation",
+        "Active service banners or protocol responses",
+        "Vulnerability scan results or exploit attempts"
+      ],
+      "evidence_refs": [
+        "graph_paths: IMS->uses_network_function->ePDG",
+        "related_risks: 暴露式 FQDN 可能提升资产可发现性",
+        "probe_status: dns_ok=false, open_ports=[], open_udp_ports=[]"
+      ],
+      "model_name": "gpt-4.1-mini-2025-04-14",
+      "fallback_used": false
+    }
+  ],
+  "attack_paths": [
+    {
+      "path_id": "path_ims_00",
+      "candidate_id": "cand_000",
+      "entrypoint": "ims.mnc001.mcc460.pub.3gppnetwork.org",
+      "pivots": [
+        "nf:eP-CSCF",
+        "nf:GGSN"
+      ],
+      "target_asset": "eP-CSCF",
+      "likelihood": 0.575,
+      "impact": "low",
+      "prerequisites": [
+        "authorized laboratory scope",
+        "target in probe allowlist/open policy"
+      ],
+      "evidence_refs": [
+        "3GPP TS 23.003",
+        "Graph paths: IMS->uses_network_function->eP-CSCF, GGSN, E-UTRAN, NG-RAN",
+        "Probe observation: DNS resolution failed, no open ports detected",
+        "Related risk: '暴露式 FQDN 可能提升资产可发现性'"
+      ],
+      "validation_status": "hypothesis"
+    },
+    {
+      "path_id": "path_ims_01",
+      "candidate_id": "cand_001",
+      "entrypoint": "n3iwf.5gc.mnc001.mcc460.pub.3gppnetwork.org",
+      "pivots": [
+        "nf:N3IWF"
+      ],
+      "target_asset": "N3IWF",
+      "likelihood": 0.62,
+      "impact": "low",
+      "prerequisites": [
+        "authorized laboratory scope",
+        "target in probe allowlist/open policy"
+      ],
+      "evidence_refs": [
+        "3GPP TS 24.502",
+        "3GPP TS 23.003",
+        "IMS->uses_network_function->N3IWF",
+        "暴露式 FQDN 可能提升资产可发现性",
+        "probe_status: permitted=false, dns_ok=false, open_ports=[]"
+      ],
+      "validation_status": "hypothesis"
+    },
+    {
+      "path_id": "path_ims_02",
+      "candidate_id": "cand_002",
+      "entrypoint": "epdg.epc.mnc001.mcc460.pub.3gppnetwork.org",
+      "pivots": [
+        "nf:ePDG"
+      ],
+      "target_asset": "ePDG",
+      "likelihood": 0.5975,
+      "impact": "low",
+      "prerequisites": [
+        "authorized laboratory scope",
+        "target in probe allowlist/open policy"
+      ],
+      "evidence_refs": [
+        "graph_paths: IMS->uses_network_function->ePDG",
+        "related_risks: 暴露式 FQDN 可能提升资产可发现性",
+        "probe_status: dns_ok=false, open_ports=[], open_udp_ports=[]"
+      ],
+      "validation_status": "hypothesis"
+    }
+  ],
+  "probe_run": {
+    "run_id": "1201afc2-9d92-4ec4-813b-c817ec00593c",
+    "started_at": "2026-04-06T07:23:38.529937+00:00",
+    "finished_at": "2026-04-06T07:23:38.529937+00:00",
+    "probe_mode": "allowlist",
+    "results": [
+      {
+        "target": "ims.mnc001.mcc460.pub.3gppnetwork.org",
+        "host": "ims.mnc001.mcc460.pub.3gppnetwork.org",
+        "permitted": false,
+        "policy_reason": "allowlist_empty_configure_EXPOSURE_PROBE_ALLOWLIST_SUFFIXES",
+        "dns_ok": false,
+        "dns_addresses": [],
+        "https_ok": null,
+        "https_status": null,
+        "https_latency_ms": null,
+        "open_ports": [],
+        "open_udp_ports": [],
+        "service_hints": [],
+        "tls_subject": null,
+        "tls_error": null,
+        "error": null
+      },
+      {
+        "target": "n3iwf.5gc.mnc001.mcc460.pub.3gppnetwork.org",
+        "host": "n3iwf.5gc.mnc001.mcc460.pub.3gppnetwork.org",
+        "permitted": false,
+        "policy_reason": "allowlist_empty_configure_EXPOSURE_PROBE_ALLOWLIST_SUFFIXES",
+        "dns_ok": false,
+        "dns_addresses": [],
+        "https_ok": null,
+        "https_status": null,
+        "https_latency_ms": null,
+        "open_ports": [],
+        "open_udp_ports": [],
+        "service_hints": [],
+        "tls_subject": null,
+        "tls_error": null,
+        "error": null
+      },
+      {
+        "target": "epdg.epc.mnc001.mcc460.pub.3gppnetwork.org",
+        "host": "epdg.epc.mnc001.mcc460.pub.3gppnetwork.org",
+        "permitted": false,
+        "policy_reason": "allowlist_empty_configure_EXPOSURE_PROBE_ALLOWLIST_SUFFIXES",
+        "dns_ok": false,
+        "dns_addresses": [],
+        "https_ok": null,
+        "https_status": null,
+        "https_latency_ms": null,
+        "open_ports": [],
+        "open_udp_ports": [],
+        "service_hints": [],
+        "tls_subject": null,
+        "tls_error": null,
+        "error": null
+      }
+    ],
+    "summary": {
+      "total": 3,
+      "permitted": 0,
+      "dns_ok": 0,
+      "https_ok": 0,
+      "tcp_open": 0,
+      "udp_open": 0,
+      "sip_hint": 0,
+      "gtp_hint": 0,
+      "ipsec_hint": 0
+    }
+  },
+  "report_path": "data\\runtime\\exposure_runs\\exp_b4771a06a3.md",
+  "summary": {
+    "total_candidates": 3,
+    "high_or_critical": 0,
+    "probe_reachable": 0,
+    "attack_paths": 3,
+    "validated_paths": 0,
+    "llm_used": true
+  }
+}

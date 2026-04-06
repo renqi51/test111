@@ -1,10 +1,36 @@
+import logging
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
 from app.utils.storage import init_runtime_from_seed_if_missing
 from app.api import graph, extract, extraction, exposure, reports, demo, experiments, skills, agent, mcp, probe, builder, graph_rag
+from pathlib import Path
+
 from app.repositories.graph_repository import get_graph_repository
+from app.utils.file_parser import read_rule_context_multi, supported_input_suffixes
+
+logger = logging.getLogger(__name__)
+
+
+def _configure_logging() -> None:
+    """Ensure app.* loggers emit INFO (e.g. KG build progress); default root level is WARNING."""
+    root = logging.getLogger()
+    root.setLevel(logging.INFO)
+    for handler in root.handlers:
+        handler.setLevel(logging.INFO)
+    if not root.handlers:
+        logging.basicConfig(
+            level=logging.INFO,
+            format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+        )
+    logging.getLogger("app").setLevel(logging.INFO)
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+    logging.getLogger("httpcore").setLevel(logging.WARNING)
+
+
+_configure_logging()
 
 app = FastAPI(title=settings.app_name, version="0.1.0")
 
@@ -19,10 +45,22 @@ app.add_middleware(
 
 @app.on_event("startup")
 def _startup():
+    _configure_logging()
     # 仍然初始化本地 seed/runtime，作为 Neo4j 不可用时的 fallback
     init_runtime_from_seed_if_missing()
     # 触发仓储初始化（包括 Neo4j 连接尝试）
     _ = get_graph_repository()
+    logger.info(
+        "Startup: graph_backend=%s neo4j_uri=%s kg_input_dir=%s kg_rule_dir=%s "
+        "input_suffixes=%s (yaml+yml both supported)",
+        settings.graph_backend,
+        settings.neo4j_uri if settings.graph_backend == "neo4j" else "(n/a)",
+        settings.kg_input_dir,
+        settings.kg_rule_dir,
+        sorted(supported_input_suffixes()),
+    )
+    _rules = read_rule_context_multi(Path(settings.kg_rule_dir))
+    logger.info("Startup: rule_context ready, length=%s characters", len(_rules))
 
 
 app.include_router(graph.router, prefix="/api")

@@ -1,0 +1,186 @@
+{
+  "pack_id": "pack_c6b172a14a",
+  "query": "Untitled standard fragment IMS openapi: 3.0.3 info: title: SIM Swap description: | The SIM swap API provides a programmable interface for developers and other users (capabilities consumers) to request the last date of a SIM swap performed on the mobile line, or, to check whether a SIM swap has been performed during a past period.",
+  "document_id": "doc_3b427335bc",
+  "scenario_hint": "IMS",
+  "items": [
+    {
+      "evidence_id": "ev_000_doc_3b427335bc_c000",
+      "chunk_id": "doc_3b427335bc_c000",
+      "document_id": "doc_3b427335bc",
+      "heading": "",
+      "text": "openapi: 3.0.3\ninfo:\n  title: SIM Swap\n  description: |\n    The SIM swap API provides a programmable interface for developers and other users (capabilities consumers) to request the last date of a SIM swap performed on the mobile line, or, to check whether a SIM swap has been performed during a past period.",
+      "relevance_score": 0.5028,
+      "source_locator": {
+        "section_id": "s1",
+        "char_start": 0,
+        "char_end": 308
+      },
+      "tags": [
+        "IMS"
+      ]
+    },
+    {
+      "evidence_id": "ev_001_doc_3b427335bc_c015",
+      "chunk_id": "doc_3b427335bc_c015",
+      "document_id": "doc_3b427335bc",
+      "heading": "",
+      "text": "- POST check: Checks if SIM swap has been performed during a past period (defined in the request with 'maxAge' attribute) for a given phone number.",
+      "relevance_score": 0.2421,
+      "source_locator": {
+        "section_id": "s6",
+        "char_start": 3089,
+        "char_end": 3236
+      },
+      "tags": [
+        "IMS"
+      ]
+    },
+    {
+      "evidence_id": "ev_002_doc_3b427335bc_c002",
+      "chunk_id": "doc_3b427335bc_c002",
+      "document_id": "doc_3b427335bc",
+      "heading": "",
+      "text": "The SIM Swap API performs real-time checks on the last SIM Swap event.",
+      "relevance_score": 0.2034,
+      "source_locator": {
+        "section_id": "s1",
+        "char_start": 334,
+        "char_end": 404
+      },
+      "tags": [
+        "IMS"
+      ]
+    },
+    {
+      "evidence_id": "ev_003_doc_3b427335bc_c006",
+      "chunk_id": "doc_3b427335bc_c006",
+      "document_id": "doc_3b427335bc",
+      "heading": "",
+      "text": "* When did the last SIM swap occur?\n    * Has a SIM swap occurred during last n hours?",
+      "relevance_score": 0.1891,
+      "source_locator": {
+        "section_id": "s3",
+        "char_start": 1245,
+        "char_end": 1331
+      },
+      "tags": [
+        "IMS"
+      ]
+    },
+    {
+      "evidence_id": "ev_004_doc_3b427335bc_c004",
+      "chunk_id": "doc_3b427335bc_c004",
+      "document_id": "doc_3b427335bc",
+      "heading": "",
+      "text": "The SIM Swap API can also be used to protect non-automated actions. For example, when a call center expert contacts a user to clarify or confirm a sensitive operation.",
+      "relevance_score": 0.1782,
+      "source_locator": {
+        "section_id": "s2",
+        "char_start": 753,
+        "char_end": 920
+      },
+      "tags": [
+        "IMS"
+      ]
+    },
+    {
+      "evidence_id": "ev_005_doc_3b427335bc_c013",
+      "chunk_id": "doc_3b427335bc_c013",
+      "document_id": "doc_3b427335bc",
+      "heading": "",
+      "text": "- If no swap has been performed and the network operator supports unlimited SimSwap monitoring timeframe, the API will return the SIM activation date (the timestamp of the first time that the SIM connected to the network).",
+      "relevance_score": 0.1505,
+      "source_locator": {
+        "section_id": "s5",
+        "char_start": 2276,
+        "char_end": 2498
+      },
+      "tags": [
+        "IMS"
+      ]
+    },
+    {
+      "evidence_id": "ev_006_doc_3b427335bc_c003",
+      "chunk_id": "doc_3b427335bc_c003",
+      "document_id": "doc_3b427335bc",
+      "heading": "",
+      "text": "The SIM Swap API is useful to prevent fraud by reducing the risk of account takeover fraud by strengthening SIM based authentication processes such as SMS One-time passwords. Fraudsters are using SIM swap techniques to intercept SMS messages and reset passwords or receive verification codes that allow them to access protected accounts.",
+      "relevance_score": 0.1489,
+      "source_locator": {
+        "section_id": "s2",
+        "char_start": 410,
+        "char_end": 747
+      },
+      "tags": [
+        "IMS"
+      ]
+    },
+    {
+      "evidence_id": "ev_007_doc_3b427335bc_c012",
+      "chunk_id": "doc_3b427335bc_c012",
+      "document_id": "doc_3b427335bc",
+      "heading": "",
+      "text": "- POST retrieve-date : Provides timestamp of latest SIM swap, if any, for a given phone number.",
+      "relevance_score": 0.1478,
+      "source_locator": {
+        "section_id": "s5",
+        "char_start": 2173,
+        "char_end": 2268
+      },
+      "tags": [
+        "IMS"
+      ]
+    },
+    {
+      "evidence_id": "ev_008_doc_3b427335bc_c023",
+      "chunk_id": "doc_3b427335bc_c023",
+      "document_id": "doc_3b427335bc",
+      "heading": "",
+      "text": "This approach simplifies API usage for API consumers using a three-legged access token to invoke the API by relying on the information that is associated with the access token and was identified during the authentication process.",
+      "relevance_score": 0.1423,
+      "source_locator": {
+        "section_id": "s8",
+        "char_start": 5371,
+        "char_end": 5600
+      },
+      "tags": [
+        "IMS"
+      ]
+    },
+    {
+      "evidence_id": "ev_009_doc_3b427335bc_c009",
+      "chunk_id": "doc_3b427335bc_c009",
+      "document_id": "doc_3b427335bc",
+      "heading": "",
+      "text": "SIM swap also happens during other actions like changing user's phone number, changing mobile service provider keeping user's mobile phone number or when activating a new SIM associated to the same phone number, known as multisim service. New subscription is considered as a SIM swap as well, the MSISDN which can be used by another person earlier, is associated with a SIM card it was not associated before.",
+      "relevance_score": 0.1393,
+      "source_locator": {
+        "section_id": "s4",
+        "char_start": 1698,
+        "char_end": 2106
+      },
+      "tags": [
+        "IMS"
+      ]
+    }
+  ],
+  "retrieval_strategy": "keyword_overlap",
+  "retrieval_version": "v1",
+  "rerank_used": false,
+  "rerank_strategy": null,
+  "retriever_config": {
+    "top_k": 10
+  },
+  "retrieval_trace": [
+    {
+      "strategy": "keyword_overlap",
+      "strategy_version": "v1",
+      "top_k": 10,
+      "total_chunks": 51,
+      "rerank_used": false,
+      "rerank_strategy": null
+    }
+  ],
+  "created_at": "2026-04-06T07:26:40.336721"
+}

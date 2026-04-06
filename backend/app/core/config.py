@@ -36,6 +36,10 @@ class Settings(BaseSettings):
     llm_api_key: SecretStr | None = None
     llm_model_name: str = "gpt-4.1-mini"
     llm_timeout: int = 60
+    llm_max_concurrency: int = 4
+    llm_retry_attempts: int = 5
+    llm_retry_min_wait_sec: int = 2
+    llm_retry_max_wait_sec: int = 30
 
     # Extraction pipeline
     extraction_worker_model: str = "gpt-4.1-mini"
@@ -57,6 +61,7 @@ class Settings(BaseSettings):
 
     # Local KG builder
     kg_input_dir: str = str(DATA_DIR / "input")
+    # Primary rules dir; code also merges sibling ``data/rules`` if it exists (read_rule_context_multi).
     kg_rule_dir: str = str(DATA_DIR / "rule")
     kg_chunk_size: int = 4000
     kg_chunk_overlap: int = 400
@@ -69,6 +74,23 @@ class Settings(BaseSettings):
     # 若未单独配置，则默认复用 llm_base_url / llm_api_key
     graph_rag_embedding_base_url: str | None = None
     graph_rag_embedding_api_key: SecretStr | None = None
+    graph_rag_embedding_request_timeout: int = 60
+    graph_rag_embedding_max_retries: int = 5
+    graph_rag_ingest_batch_size: int = 80
+    graph_rag_ingest_batch_sleep_sec: float = 0.5
+    # GraphRAG 问答：除 Milvus 外是否实时查 Neo4j（或 file 后端的全量图）补「图谱上下文」
+    graph_rag_neo4j_subgraph_enabled: bool = True
+    graph_rag_neo4j_seed_limit: int = 20
+    graph_rag_neo4j_max_edges: int = 100
+    # 启用上图谱补全后，Milvus 侧只把 chunk 当「原文上下文」，避免与 Neo4j 中重复 node/edge 向量
+    graph_rag_milvus_chunks_only_when_neo4j_context: bool = True
+
+    # KG 构建并发与死信日志
+    kg_builder_chunk_concurrency: int = 4
+    kg_builder_dlq_path: str = str(RUNTIME_DIR / "kg_chunk_failures.jsonl")
+    # 合并进 Neo4j 之前落盘全量 nodes/edges（防止 merge 失败导致只能重抽）。大任务 JSON 可能较大。
+    kg_persist_payload_before_merge: bool = True
+    kg_merge_payload_path: str = str(RUNTIME_DIR / "kg_last_merge_payload.json")
 
     @staticmethod
     def _secret_value(value: SecretStr | None) -> str | None:

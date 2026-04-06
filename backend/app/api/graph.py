@@ -1,4 +1,4 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Query
 
 from app.schemas.graph import GraphEdge, GraphNode, GraphPayload, GraphStats, ValidateResult
 from app.schemas.merge import MergeRequest, MergeResponse
@@ -79,6 +79,29 @@ def graph_node(node_id: str):
 def graph_neighbors(node_id: str, depth: int = 1):
     repo = get_graph_repository()
     sub = repo.neighbors(node_id, depth=depth)
+    return GraphPayload(
+        nodes=[GraphNode.model_validate(n) for n in sub["nodes"]],
+        edges=[GraphEdge.model_validate(e) for e in sub["edges"]],
+    )
+
+
+@router.get("/graph/subgraph/search", response_model=GraphPayload)
+def graph_subgraph_search(
+    q: str = Query(min_length=1, description="关键词，按 id/label/description 匹配子图种子"),
+    seed_limit: int = Query(default=20, ge=1, le=200),
+    max_edges: int = Query(default=120, ge=1, le=3000),
+):
+    """
+    按关键词返回子图，优先用于前端大图性能优化（避免一次渲染全图）。
+    - Neo4j 后端：走数据库子图查询；
+    - file 后端：走内存图过滤（兼容模式）。
+    """
+    repo = get_graph_repository()
+    sub = repo.subgraph_for_graph_rag_question(
+        q,
+        seed_limit=seed_limit,
+        max_edges=max_edges,
+    )
     return GraphPayload(
         nodes=[GraphNode.model_validate(n) for n in sub["nodes"]],
         edges=[GraphEdge.model_validate(e) for e in sub["edges"]],

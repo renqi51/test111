@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 from pathlib import Path
 from typing import Any
@@ -7,12 +8,68 @@ from typing import Any
 from langchain_core.documents import Document
 from langchain_milvus import Milvus
 from langchain_openai import OpenAIEmbeddings
+from pymilvus import MilvusClient
+from pymilvus.orm.connections import connections
 
 from app.core.config import settings
 from app.services.kg_builder_service import get_kg_builder_service
 from app.utils.file_parser import chunk_text
 
 logger = logging.getLogger(__name__)
+_MILVUS_CLIENT_PATCHED = False
+
+
+def _enable_milvus_orm_alias_compat() -> None:
+    """
+    兼容补丁：
+    - langchain_milvus 内部会用 MilvusClient._using 去构造 ORM Collection；
+    - 在 pymilvus 2.6.x 中，该 alias 默认不是 ORM 已注册连接，可能触发
+      `ConnectionNotExistException: should create connection first.`。
+    - 这里将 alias 固定到可控值并显式注册 ORM 连接，保证远程/Docker Milvus 可用。
+    """
+    global _MILVUS_CLIENT_PATCHED
+    if _MILVUS_CLIENT_PATCHED:
+        return
+
+    original_init = MilvusClient.__init__
+
+    def patched_init(  # type: ignore[no-untyped-def]
+        self,
+        uri: str = "http://localhost:19530",
+        user: str = "",
+        password: str = "",
+        db_name: str = "",
+        token: str = "",
+        timeout: float | None = None,
+        **kwargs,
+    ) -> None:
+        alias = str(kwargs.pop("alias", "graph-rag"))
+        original_init(
+            self,
+            uri=uri,
+            user=user,
+            password=password,
+            db_name=db_name,
+            token=token,
+            timeout=timeout,
+            **kwargs,
+        )
+        try:
+            connections.connect(
+                alias=alias,
+                uri=uri,
+                user=user,
+                password=password,
+                db_name=db_name,
+                token=token,
+            )
+            self._using = alias
+        except Exception:  # noqa: BLE001
+            # 若 ORM alias 注册失败，回退到原行为，避免影响其他调用场景。
+            pass
+
+    MilvusClient.__init__ = patched_init  # type: ignore[method-assign]
+    _MILVUS_CLIENT_PATCHED = True
 
 
 class GraphRAGIngestService:
@@ -30,7 +87,10 @@ class GraphRAGIngestService:
         - Milvus Lite 使用 sqlite-like 的本地文件持久化；
         - 这里统一写到 settings.graph_rag_milvus_uri 指定位置。
         """
-        raw = settings.graph_rag_milvus_uri
+        raw = settings.graph_rag_milvus_uri.strip()
+        # Docker/远程 Milvus 场景：如果是 URI（如 http://127.0.0.1:19530），直接返回。
+        if "://" in raw:
+            return raw
         path = Path(raw)
         if not path.is_absolute():
             # 以 backend 工作目录为基准，避免不同 cwd 下路径漂移。
@@ -53,10 +113,18 @@ class GraphRAGIngestService:
         kwargs: dict[str, Any] = {
             "model": settings.graph_rag_embedding_model,
             "api_key": api_key,
+            # 显式声明超时与重试，降低网络抖动造成的单批失败概率。
+            "request_timeout": settings.graph_rag_embedding_request_timeout,
+            "max_retries": settings.graph_rag_embedding_max_retries,
         }
         if base_url:
             kwargs["base_url"] = base_url
         return OpenAIEmbeddings(**kwargs)
+
+    @staticmethod
+    def _iter_doc_batches(docs: list[Document], batch_size: int) -> list[list[Document]]:
+        size = max(1, int(batch_size))
+        return [docs[i : i + size] for i in range(0, len(docs), size)]
 
     def _build_vector_store(self) -> Milvus:
         """
@@ -67,10 +135,11 @@ class GraphRAGIngestService:
         """
         embeddings = self._build_embeddings()
         uri = self._resolve_milvus_uri()
+        _enable_milvus_orm_alias_compat()
         return Milvus(
             embedding_function=embeddings,
             collection_name=settings.graph_rag_collection,
-            connection_args={"uri": uri},
+            connection_args={"uri": uri, "alias": "graph-rag"},
             auto_id=True,
             drop_old=False,
         )
@@ -122,6 +191,14 @@ class GraphRAGIngestService:
                 "inserted_docs": 0,
                 "notes": ["empty text, skipped"],
             }
+
+        logger.info(
+            "[GraphRAG] ingest_text begin source_file=%s text_len=%s rule_context_len=%s — "
+            "will call LLM chat per chunk (NOT embed-only)",
+            source_file,
+            len(text),
+            len(rule_context or ""),
+        )
 
         chunks = chunk_text(
             text,
@@ -205,12 +282,32 @@ class GraphRAGIngestService:
 
         try:
             store = self._build_vector_store()
-            # LangChain Milvus 内部会完成 embedding + insert。
-            store.add_documents(docs)
+            # 避免一次性大 payload 导致超时或上游限流：
+            # 将文档按批次写入，每批之间短暂 sleep 平滑流量。
+            batches = self._iter_doc_batches(docs, settings.graph_rag_ingest_batch_size)
+            sleep_sec = max(0.0, float(settings.graph_rag_ingest_batch_sleep_sec))
+            for idx, batch in enumerate(batches, start=1):
+                store.add_documents(batch)
+                logger.info(
+                    "[GraphRAG] ingest_text embedding batch %s/%s size=%s source_file=%s",
+                    idx,
+                    len(batches),
+                    len(batch),
+                    source_file,
+                )
+                # 最后一批无需等待；其余批次适度让出时间片，降低突发压测效应。
+                if idx < len(batches) and sleep_sec > 0:
+                    await asyncio.sleep(sleep_sec)
         except Exception as exc:  # noqa: BLE001
             logger.exception("GraphRAG ingest failed: source_file=%s err=%s", source_file, str(exc)[:220])
             raise
 
+        logger.info(
+            "[GraphRAG] ingest_text done source_file=%s chunks=%s inserted_docs=%s (included LLM extraction)",
+            source_file,
+            len(chunks),
+            len(docs),
+        )
         return {
             "source_file": source_file,
             "chunks_total": len(chunks),

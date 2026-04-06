@@ -1,0 +1,278 @@
+{
+  "run_id": "run_eee06b51e2",
+  "document_id": "doc_3b427335bc",
+  "nodes": [
+    {
+      "id": "s1",
+      "label": "Idle",
+      "type": "initial",
+      "properties": {
+        "normalized_name": "idle",
+        "description": "Initial state where no SIM swap check has been requested.",
+        "confidence": 0.9,
+        "attributes": {}
+      },
+      "source_doc_id": "doc_3b427335bc",
+      "source_chunk_ids": [
+        "ev_000_doc_3b427335bc_c000"
+      ],
+      "source_worker": "worker_b",
+      "judge_score": 1.0,
+      "merge_status": "pending",
+      "created_at": "2026-04-06T07:27:02.982038"
+    },
+    {
+      "id": "s2",
+      "label": "Check SIM Swap Request Received",
+      "type": "intermediate",
+      "properties": {
+        "normalized_name": "check_sim_swap_request_received",
+        "description": "State after receiving a request to check if a SIM swap has occurred during a past period.",
+        "confidence": 0.85,
+        "attributes": {
+          "request_type": "POST check",
+          "parameters": [
+            "maxAge",
+            "phone number"
+          ]
+        }
+      },
+      "source_doc_id": "doc_3b427335bc",
+      "source_chunk_ids": [
+        "ev_001_doc_3b427335bc_c015",
+        "ev_002_doc_3b427335bc_c002"
+      ],
+      "source_worker": "worker_b",
+      "judge_score": 1.0,
+      "merge_status": "pending",
+      "created_at": "2026-04-06T07:27:02.982038"
+    },
+    {
+      "id": "s3",
+      "label": "Retrieve Last SIM Swap Date Request Received",
+      "type": "intermediate",
+      "properties": {
+        "normalized_name": "retrieve_last_sim_swap_date_request_received",
+        "description": "State after receiving a request to retrieve the timestamp of the latest SIM swap for a given phone number.",
+        "confidence": 0.8,
+        "attributes": {
+          "request_type": "POST retrieve-date",
+          "parameters": [
+            "phone number"
+          ]
+        }
+      },
+      "source_doc_id": "doc_3b427335bc",
+      "source_chunk_ids": [
+        "ev_007_doc_3b427335bc_c012"
+      ],
+      "source_worker": "worker_b",
+      "judge_score": 1.0,
+      "merge_status": "pending",
+      "created_at": "2026-04-06T07:27:02.982038"
+    },
+    {
+      "id": "s4",
+      "label": "SIM Swap Occurred",
+      "type": "final",
+      "properties": {
+        "normalized_name": "sim_swap_occurred",
+        "description": "State indicating that a SIM swap has been detected for the given phone number within the requested timeframe.",
+        "confidence": 0.9,
+        "attributes": {}
+      },
+      "source_doc_id": "doc_3b427335bc",
+      "source_chunk_ids": [
+        "ev_001_doc_3b427335bc_c015",
+        "ev_003_doc_3b427335bc_c006"
+      ],
+      "source_worker": "worker_b",
+      "judge_score": 1.0,
+      "merge_status": "pending",
+      "created_at": "2026-04-06T07:27:02.982038"
+    },
+    {
+      "id": "s5",
+      "label": "No SIM Swap Detected",
+      "type": "final",
+      "properties": {
+        "normalized_name": "no_sim_swap_detected",
+        "description": "State indicating that no SIM swap has been detected within the requested timeframe. If supported by the network operator, the SIM activation date is returned.",
+        "confidence": 0.85,
+        "attributes": {
+          "possible_response": "SIM activation date"
+        }
+      },
+      "source_doc_id": "doc_3b427335bc",
+      "source_chunk_ids": [
+        "ev_005_doc_3b427335bc_c013"
+      ],
+      "source_worker": "worker_b",
+      "judge_score": 1.0,
+      "merge_status": "pending",
+      "created_at": "2026-04-06T07:27:02.982038"
+    },
+    {
+      "id": "s6",
+      "label": "SIM Swap Info Provided",
+      "type": "final",
+      "properties": {
+        "normalized_name": "sim_swap_info_provided",
+        "description": "State where the API provides the timestamp of the latest SIM swap or SIM activation date if no swap occurred.",
+        "confidence": 0.8,
+        "attributes": {}
+      },
+      "source_doc_id": "doc_3b427335bc",
+      "source_chunk_ids": [
+        "ev_007_doc_3b427335bc_c012",
+        "ev_005_doc_3b427335bc_c013"
+      ],
+      "source_worker": "worker_b",
+      "judge_score": 1.0,
+      "merge_status": "pending",
+      "created_at": "2026-04-06T07:27:02.982038"
+    },
+    {
+      "id": "s7",
+      "label": "Fraud Prevention Active",
+      "type": "active",
+      "properties": {
+        "normalized_name": "fraud_prevention_active",
+        "description": "State where SIM swap API is used to prevent fraud by strengthening SIM based authentication processes.",
+        "confidence": 0.7,
+        "attributes": {
+          "use_case": "fraud prevention"
+        }
+      },
+      "source_doc_id": "doc_3b427335bc",
+      "source_chunk_ids": [
+        "ev_006_doc_3b427335bc_c003"
+      ],
+      "source_worker": "worker_b",
+      "judge_score": 1.0,
+      "merge_status": "pending",
+      "created_at": "2026-04-06T07:27:02.982038"
+    }
+  ],
+  "edges": [
+    {
+      "source": "s1",
+      "target": "s2",
+      "interaction": "Receive POST check request",
+      "properties": {
+        "guard": "",
+        "action": "Validate request parameters",
+        "confidence": 0.85,
+        "attributes": {}
+      },
+      "source_doc_id": "doc_3b427335bc",
+      "source_chunk_ids": [
+        "ev_001_doc_3b427335bc_c015"
+      ],
+      "source_worker": "worker_b",
+      "judge_score": 1.0,
+      "merge_status": "pending",
+      "created_at": "2026-04-06T07:27:02.982038"
+    },
+    {
+      "source": "s1",
+      "target": "s3",
+      "interaction": "Receive POST retrieve-date request",
+      "properties": {
+        "guard": "",
+        "action": "Validate request parameters",
+        "confidence": 0.8,
+        "attributes": {}
+      },
+      "source_doc_id": "doc_3b427335bc",
+      "source_chunk_ids": [
+        "ev_007_doc_3b427335bc_c012"
+      ],
+      "source_worker": "worker_b",
+      "judge_score": 1.0,
+      "merge_status": "pending",
+      "created_at": "2026-04-06T07:27:02.982038"
+    },
+    {
+      "source": "s2",
+      "target": "s4",
+      "interaction": "SIM swap detected within maxAge",
+      "properties": {
+        "guard": "",
+        "action": "Return SIM swap date",
+        "confidence": 0.9,
+        "attributes": {}
+      },
+      "source_doc_id": "doc_3b427335bc",
+      "source_chunk_ids": [
+        "ev_001_doc_3b427335bc_c015",
+        "ev_003_doc_3b427335bc_c006"
+      ],
+      "source_worker": "worker_b",
+      "judge_score": 1.0,
+      "merge_status": "pending",
+      "created_at": "2026-04-06T07:27:02.982038"
+    },
+    {
+      "source": "s2",
+      "target": "s5",
+      "interaction": "No SIM swap detected within maxAge",
+      "properties": {
+        "guard": "Network operator supports unlimited monitoring timeframe",
+        "action": "Return SIM activation date",
+        "confidence": 0.85,
+        "attributes": {}
+      },
+      "source_doc_id": "doc_3b427335bc",
+      "source_chunk_ids": [
+        "ev_005_doc_3b427335bc_c013"
+      ],
+      "source_worker": "worker_b",
+      "judge_score": 1.0,
+      "merge_status": "pending",
+      "created_at": "2026-04-06T07:27:02.982038"
+    },
+    {
+      "source": "s3",
+      "target": "s6",
+      "interaction": "Retrieve latest SIM swap date",
+      "properties": {
+        "guard": "",
+        "action": "Return latest SIM swap date or SIM activation date if none",
+        "confidence": 0.8,
+        "attributes": {}
+      },
+      "source_doc_id": "doc_3b427335bc",
+      "source_chunk_ids": [
+        "ev_007_doc_3b427335bc_c012",
+        "ev_005_doc_3b427335bc_c013"
+      ],
+      "source_worker": "worker_b",
+      "judge_score": 1.0,
+      "merge_status": "pending",
+      "created_at": "2026-04-06T07:27:02.982038"
+    },
+    {
+      "source": "s6",
+      "target": "s7",
+      "interaction": "Use SIM swap info for fraud prevention",
+      "properties": {
+        "guard": "",
+        "action": "Strengthen SIM based authentication",
+        "confidence": 0.7,
+        "attributes": {}
+      },
+      "source_doc_id": "doc_3b427335bc",
+      "source_chunk_ids": [
+        "ev_006_doc_3b427335bc_c003"
+      ],
+      "source_worker": "worker_b",
+      "judge_score": 1.0,
+      "merge_status": "pending",
+      "created_at": "2026-04-06T07:27:02.982038"
+    }
+  ],
+  "metadata": {
+    "recommended_worker": "worker_b"
+  }
+}

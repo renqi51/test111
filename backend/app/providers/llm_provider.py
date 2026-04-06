@@ -1,15 +1,31 @@
 from __future__ import annotations
 
-import json
 import asyncio
+import json
+import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, AsyncIterator
 
 import httpx
+from tenacity import (
+    RetryCallState,
+    retry,
+    retry_if_exception_type,
+    stop_after_attempt,
+    wait_exponential,
+)
 
 from app.core.config import settings
+
+logger = logging.getLogger(__name__)
+
+# 仅对这些状态码做重试，避免对客户端错误进行无意义重试。
+RETRYABLE_HTTP_STATUS = {429, 502, 503, 504}
+NON_RETRYABLE_HTTP_STATUS = {400, 401, 403, 404}
+# 全局并发闸门：限制同时在途的 LLM 请求数，避免上游被突发流量压垮。
+_LLM_REQUEST_SEMAPHORE = asyncio.Semaphore(max(1, int(settings.llm_max_concurrency)))
 
 
 @dataclass
@@ -33,6 +49,34 @@ class LLMProviderBase(ABC):
         model_name: str | None = None,
         temperature: float = 0.2,
     ) -> LLMExtractResult: ...
+
+    @abstractmethod
+    async def chat_stream_text(
+        self,
+        system_prompt: str,
+        user_prompt: str,
+        *,
+        model_name: str | None = None,
+        temperature: float = 0.2,
+    ) -> AsyncIterator[str]: ...
+
+
+class RetryableHTTPStatusError(RuntimeError):
+    """包装可重试 HTTP 状态错误，供 tenacity 识别。"""
+
+    def __init__(self, status_code: int, body_preview: str = "") -> None:
+        super().__init__(f"Retryable HTTP status={status_code}, body={body_preview}")
+        self.status_code = status_code
+        self.body_preview = body_preview
+
+
+def _before_retry_log(retry_state: RetryCallState) -> None:
+    exc = retry_state.outcome.exception() if retry_state.outcome else None
+    logger.warning(
+        "LLM request retrying: attempt=%s err=%s",
+        retry_state.attempt_number,
+        str(exc)[:220] if exc else "(unknown)",
+    )
 
 
 SYSTEM_PROMPT = """你是一名安全研究助理，专注 3GPP / GSMA / 运营商开放网络标准。
@@ -106,6 +150,53 @@ def _resolve_chat_completions_url() -> str:
 
 
 class OpenAICompatibleProvider(LLMProviderBase):
+    @retry(
+        stop=stop_after_attempt(max(1, int(settings.llm_retry_attempts))),
+        wait=wait_exponential(
+            multiplier=1,
+            min=max(1, int(settings.llm_retry_min_wait_sec)),
+            max=max(1, int(settings.llm_retry_max_wait_sec)),
+        ),
+        retry=retry_if_exception_type(
+            (
+                httpx.TimeoutException,
+                httpx.ConnectError,
+                httpx.TransportError,
+                RetryableHTTPStatusError,
+            )
+        ),
+        before_sleep=_before_retry_log,
+        reraise=True,
+    )
+    async def _post_chat_with_retry(
+        self,
+        *,
+        url: str,
+        headers: dict[str, str],
+        payload: dict[str, Any],
+    ) -> dict[str, Any]:
+        # 全局并发闸门：将所有入口统一纳入限流控制。
+        async with _LLM_REQUEST_SEMAPHORE:
+            try:
+                async with httpx.AsyncClient(timeout=settings.llm_timeout, follow_redirects=True) as client:
+                    resp = await client.post(url, headers=headers, json=payload)
+            except (httpx.TimeoutException, httpx.ConnectError, httpx.TransportError):
+                # 交给 tenacity 判定并重试。
+                raise
+
+        if resp.status_code >= 400:
+            body_preview = (resp.text or "")[:240]
+            # 429/502/503/504 属于瞬态故障，交给 tenacity 自动退避重试。
+            if resp.status_code in RETRYABLE_HTTP_STATUS:
+                raise RetryableHTTPStatusError(resp.status_code, body_preview=body_preview)
+            # 明确的客户端参数/权限问题直接失败，不重试。
+            if resp.status_code in NON_RETRYABLE_HTTP_STATUS:
+                resp.raise_for_status()
+            # 其他未知状态码默认按不可恢复处理，避免无限放大请求风暴。
+            resp.raise_for_status()
+
+        return resp.json()
+
     async def extract_structured(self, text: str) -> LLMExtractResult:
         return await self.chat_json(
             system_prompt=SYSTEM_PROMPT,
@@ -129,8 +220,9 @@ class OpenAICompatibleProvider(LLMProviderBase):
         llm_api_key = settings.llm_api_key_value
         if llm_api_key:
             headers["Authorization"] = f"Bearer {llm_api_key}"
+        model_used = model_name or settings.llm_model_name
         payload = {
-            "model": model_name or settings.llm_model_name,
+            "model": model_used,
             "temperature": temperature,
             "response_format": {"type": "json_object"},
             "messages": [
@@ -138,26 +230,13 @@ class OpenAICompatibleProvider(LLMProviderBase):
                 {"role": "user", "content": user_prompt},
             ],
         }
-        data: dict[str, Any] | None = None
-        last_exc: Exception | None = None
-        for attempt in range(3):
-            try:
-                async with httpx.AsyncClient(timeout=settings.llm_timeout, follow_redirects=True) as client:
-                    resp = await client.post(url, headers=headers, json=payload)
-                    resp.raise_for_status()
-                    data = resp.json()
-                    break
-            except (httpx.TimeoutException, httpx.TransportError) as exc:
-                last_exc = exc
-                if attempt >= 2:
-                    raise
-                await asyncio.sleep(0.4 * (attempt + 1))
-                continue
-            except httpx.HTTPStatusError:
-                # 4xx/5xx are returned directly; no blind retry except transient disconnects above.
-                raise
-        if data is None:
-            raise RuntimeError(f"LLM request failed after retries: {last_exc}")
+        logger.debug(
+            "LLM chat_json request model=%s system_chars=%s user_chars=%s",
+            model_used,
+            len(system_prompt),
+            len(user_prompt),
+        )
+        data = await self._post_chat_with_retry(url=url, headers=headers, payload=payload)
         content = data["choices"][0]["message"]["content"]
         try:
             parsed = json.loads(content)
@@ -169,6 +248,56 @@ class OpenAICompatibleProvider(LLMProviderBase):
             provider=settings.llm_provider or "openai-compatible",
             created_at=datetime.now(timezone.utc).isoformat(),
         )
+
+    async def chat_stream_text(
+        self,
+        system_prompt: str,
+        user_prompt: str,
+        *,
+        model_name: str | None = None,
+        temperature: float = 0.2,
+    ) -> AsyncIterator[str]:
+        url = _resolve_chat_completions_url()
+        headers = {"Content-Type": "application/json"}
+        llm_api_key = settings.llm_api_key_value
+        if llm_api_key:
+            headers["Authorization"] = f"Bearer {llm_api_key}"
+        model_used = model_name or settings.llm_model_name
+        payload = {
+            "model": model_used,
+            "temperature": temperature,
+            "stream": True,
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+        }
+        async with _LLM_REQUEST_SEMAPHORE:
+            async with httpx.AsyncClient(timeout=settings.llm_timeout, follow_redirects=True) as client:
+                async with client.stream("POST", url, headers=headers, json=payload) as resp:
+                    if resp.status_code >= 400:
+                        body_preview = (await resp.aread()).decode("utf-8", errors="ignore")[:240]
+                        raise RuntimeError(f"LLM stream failed status={resp.status_code} body={body_preview}")
+                    async for line in resp.aiter_lines():
+                        s = (line or "").strip()
+                        if not s:
+                            continue
+                        if not s.startswith("data:"):
+                            continue
+                        data = s[5:].strip()
+                        if data == "[DONE]":
+                            break
+                        try:
+                            obj = json.loads(data)
+                        except Exception:  # noqa: BLE001
+                            continue
+                        choices = obj.get("choices") or []
+                        if not choices:
+                            continue
+                        delta = choices[0].get("delta") or {}
+                        content = delta.get("content")
+                        if isinstance(content, str) and content:
+                            yield content
 
 
 class NullLLMProvider(LLMProviderBase):
@@ -194,6 +323,17 @@ class NullLLMProvider(LLMProviderBase):
             provider="disabled",
             created_at=datetime.now(timezone.utc).isoformat(),
         )
+
+    async def chat_stream_text(
+        self,
+        system_prompt: str,  # noqa: ARG002
+        user_prompt: str,  # noqa: ARG002
+        *,
+        model_name: str | None = None,  # noqa: ARG002
+        temperature: float = 0.2,  # noqa: ARG002
+    ) -> AsyncIterator[str]:
+        if False:
+            yield ""
 
 
 def get_llm_provider() -> LLMProviderBase:

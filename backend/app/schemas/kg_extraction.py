@@ -53,6 +53,13 @@ class LocalImportRequest(BaseModel):
         ge=1,
         description="Optional maximum number of input files for debugging.",
     )
+    only_extensions: list[str] | None = Field(
+        default=None,
+        description=(
+            "If set, only ingest files with these suffixes (e.g. [\".yaml\", \".txt\"]). "
+            "Use after a full PDF/MD run to add text/YAML without re-parsing PDFs."
+        ),
+    )
 
 
 class LocalImportResponse(BaseModel):

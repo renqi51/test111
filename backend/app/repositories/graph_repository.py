@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any, Iterable
@@ -13,6 +14,42 @@ from app.services import graph_engine
 
 
 GraphDict = dict[str, list[dict[str, Any]]]
+
+
+def tokenize_question_for_graph_search(question: str, *, max_tokens: int = 24) -> list[str]:
+    """
+    从用户问题中提取用于子图匹配的候选串（小写、去重、限长）。
+    含简单 3GPP TS 号提取，便于匹配标准文档类节点。
+    """
+    q = (question or "").strip().lower()
+    if not q:
+        return []
+    tokens: set[str] = set()
+    # 先抓英文/数字术语，避免 "sip是什么" 这类中英粘连导致术语丢失。
+    for m in re.finditer(r"[a-zA-Z][a-zA-Z0-9._\-]{1,}", q):
+        t = m.group(0).strip().lower()
+        if len(t) >= 2:
+            tokens.add(t)
+            # 常见术语有复合形态时，再补一层基础词干（例如 oauth2.0 -> oauth2）。
+            base = re.split(r"[._\-]", t)[0].strip()
+            if len(base) >= 2:
+                tokens.add(base)
+    for m in re.finditer(r"(?:ts|3gpp)[\s_\-]*(\d+(?:\.\d+)+)", q, flags=re.IGNORECASE):
+        num = m.group(1).lower()
+        tokens.add(num)
+        tokens.add(f"ts_{num.replace('.', '_')}")
+        tokens.add(f"ts{num}")
+    for raw in re.split(r"[^\w\u4e00-\u9fff]+", q):
+        t = raw.strip().lower()
+        if len(t) < 2:
+            continue
+        # 避免 "is"/"ts" 等两字母英文造成海量 CONTAINS 命中
+        if len(t) == 2 and t.isalpha():
+            continue
+        tokens.add(t)
+    out = list(tokens)
+    out.sort(key=len, reverse=True)
+    return out[:max_tokens]
 
 
 @dataclass
@@ -34,6 +71,16 @@ class GraphRepositoryBase(ABC):
 
     @abstractmethod
     def neighbors(self, node_id: str, depth: int = 1) -> GraphDict: ...
+
+    def subgraph_for_graph_rag_question(
+        self,
+        question: str,
+        *,
+        seed_limit: int = 20,
+        max_edges: int = 100,
+    ) -> GraphDict:
+        """GraphRAG 问答用：默认无子图（Neo4j / File 子类覆盖）。"""
+        return {"nodes": [], "edges": []}
 
     def save_staging_graph(self, run_id: str, payload: dict[str, Any]) -> None:
         trace_service.save_staging_graph(run_id, payload)
@@ -93,6 +140,68 @@ class FileGraphRepository(GraphRepositoryBase):
         if node_id in nodes:
             selected_nodes[node_id] = nodes[node_id]
         return {"nodes": list(selected_nodes.values()), "edges": selected_edges}
+
+    def subgraph_for_graph_rag_question(
+        self,
+        question: str,
+        *,
+        seed_limit: int = 20,
+        max_edges: int = 100,
+    ) -> GraphDict:
+        tokens = tokenize_question_for_graph_search(question)
+        if not tokens:
+            return {"nodes": [], "edges": []}
+        g = self.get_graph()
+        hits: list[dict[str, Any]] = []
+        for n in g.get("nodes", []):
+            nid = str(n.get("id", "")).lower()
+            lab = str(n.get("label", "")).lower()
+            desc = str(n.get("description", "")).lower()
+            if any(t in nid or t in lab or t in desc for t in tokens):
+                hits.append(
+                    {
+                        "id": n.get("id"),
+                        "label": n.get("label", n.get("id")),
+                        "type": n.get("type", "Unknown"),
+                        "description": n.get("description", ""),
+                        "evidence_source": n.get("evidence_source", ""),
+                        "en_identifier": n.get("en_identifier", ""),
+                    }
+                )
+        hits = hits[: max(1, seed_limit)]
+        seed_ids = {str(n["id"]) for n in hits if n.get("id")}
+        if not seed_ids:
+            return {"nodes": [], "edges": []}
+        edges_out: list[dict[str, Any]] = []
+        for e in g.get("edges", []):
+            s, t = str(e.get("source", "")), str(e.get("target", ""))
+            if s in seed_ids or t in seed_ids:
+                edges_out.append(
+                    {
+                        "source": s,
+                        "target": t,
+                        "interaction": e.get("interaction", ""),
+                    }
+                )
+            if len(edges_out) >= max_edges:
+                break
+        need_ids = set(seed_ids)
+        for e in edges_out:
+            need_ids.add(str(e["source"]))
+            need_ids.add(str(e["target"]))
+        by_id: dict[str, dict[str, Any]] = {str(n["id"]): n for n in hits if n.get("id")}
+        for n in g.get("nodes", []):
+            nid = str(n.get("id", ""))
+            if nid in need_ids and nid not in by_id:
+                by_id[nid] = {
+                    "id": n.get("id"),
+                    "label": n.get("label", nid),
+                    "type": n.get("type", "Unknown"),
+                    "description": n.get("description", ""),
+                    "evidence_source": n.get("evidence_source", ""),
+                    "en_identifier": n.get("en_identifier", ""),
+                }
+        return {"nodes": list(by_id.values()), "edges": edges_out}
 
 
 class Neo4jGraphRepository(GraphRepositoryBase):
@@ -160,14 +269,10 @@ class Neo4jGraphRepository(GraphRepositoryBase):
                     "evidence_source": n.get("evidence_source", ""),
                     "en_identifier": n.get("en_identifier", ""),
                 }
-                # Neo4j label syntax should be `:Entity:Service` (no double-colon).
-                # We build label segments without leading colons, then format as `e:{labels}`.
-                labels = "Entity"
-                extra_label = n.get("type")
-                if extra_label:
-                    labels = f"{labels}:{extra_label}"
+                # 只 MERGE :Entity {id}。不要把 type 加成第二图谱标签：
+                # 否则同一 id 先写成 Entity:TypeA 再 MERGE Entity:TypeB 会违反 id 唯一约束（你遇到的 'ue'）。
                 sess.run(
-                    f"MERGE (e:{labels} {{id:$id}}) "
+                    "MERGE (e:Entity {id:$id}) "
                     "SET e.label=$label, e.type=$type, e.description=$description, "
                     "e.evidence_source=$evidence_source, e.en_identifier=$en_identifier",
                     **props,
@@ -202,14 +307,16 @@ class Neo4jGraphRepository(GraphRepositoryBase):
 
     def neighbors(self, node_id: str, depth: int = 1) -> GraphDict:
         depth = max(1, min(depth, 3))
+        # Neo4j 不支持在可变长度关系中使用参数化 range（[*1..$depth]）。
+        # 这里先做范围钳制，再将整数深度内联到 Cypher 字符串中。
+        depth_range = f"*1..{depth}"
         nodes = [
             rec["n"]
             for rec in self._run(
-                "MATCH (c:Entity {id:$id})-[*1..$depth]-(n:Entity) "
+                f"MATCH (c:Entity {{id:$id}})-[{depth_range}]-(n:Entity) "
                 "RETURN DISTINCT {id:n.id,label:n.label,type:n.type,description:n.description,"
                 "evidence_source:n.evidence_source,en_identifier:n.en_identifier} AS n",
                 id=node_id,
-                depth=depth,
             )
         ]
         edges = [
@@ -219,15 +326,110 @@ class Neo4jGraphRepository(GraphRepositoryBase):
                 "interaction": rec["interaction"],
             }
             for rec in self._run(
-                "MATCH (c:Entity {id:$id})-[*1..$depth]-(n:Entity) "
-                "WITH collect(DISTINCT n) + c AS ns "
-                "UNWIND ns AS a UNWIND ns AS b "
-                "MATCH (a)-[r]->(b) "
+                f"MATCH (c:Entity {{id:$id}})-[{depth_range}]-(n:Entity) "
+                "WITH collect(DISTINCT n.id) + $id AS ids "
+                "UNWIND ids AS aid UNWIND ids AS bid "
+                "MATCH (a:Entity {id:aid})-[r]->(b:Entity {id:bid}) "
                 "RETURN DISTINCT a.id AS source, b.id AS target, type(r) AS interaction",
                 id=node_id,
-                depth=depth,
             )
         ]
+        return {"nodes": nodes, "edges": edges}
+
+    def subgraph_for_graph_rag_question(
+        self,
+        question: str,
+        *,
+        seed_limit: int = 20,
+        max_edges: int = 100,
+    ) -> GraphDict:
+        tokens = tokenize_question_for_graph_search(question)
+        if not tokens:
+            return {"nodes": [], "edges": []}
+        seed_limit = max(1, min(seed_limit, 80))
+        max_edges = max(1, min(max_edges, 500))
+
+        seed_rows = list(
+            self._run(
+                "MATCH (n:Entity) "
+                "WHERE any(t IN $tokens WHERE "
+                "toLower(coalesce(n.label, '')) CONTAINS t OR "
+                "toLower(coalesce(n.description, '')) CONTAINS t OR "
+                "toLower(coalesce(n.id, '')) CONTAINS t) "
+                "RETURN DISTINCT n.id AS id, n.label AS label, n.type AS type, n.description AS description, "
+                "n.evidence_source AS evidence_source, n.en_identifier AS en_identifier "
+                "LIMIT $seed_limit",
+                tokens=tokens,
+                seed_limit=seed_limit,
+            )
+        )
+        nodes: list[dict[str, Any]] = [
+            {
+                "id": row["id"],
+                "label": row.get("label") or row["id"],
+                "type": row.get("type") or "Unknown",
+                "description": row.get("description") or "",
+                "evidence_source": row.get("evidence_source") or "",
+                "en_identifier": row.get("en_identifier") or "",
+            }
+            for row in seed_rows
+            if row.get("id")
+        ]
+        seed_ids = [n["id"] for n in nodes]
+        if not seed_ids:
+            return {"nodes": [], "edges": []}
+
+        edge_rows = list(
+            self._run(
+                "MATCH (a:Entity)-[r]->(b:Entity) "
+                "WHERE a.id IN $ids OR b.id IN $ids "
+                "RETURN DISTINCT a.id AS source, b.id AS target, type(r) AS interaction "
+                "LIMIT $max_edges",
+                ids=seed_ids,
+                max_edges=max_edges,
+            )
+        )
+        edges: list[dict[str, Any]] = [
+            {
+                "source": row["source"],
+                "target": row["target"],
+                "interaction": row.get("interaction") or "",
+            }
+            for row in edge_rows
+            if row.get("source") and row.get("target")
+        ]
+
+        need_ids: set[str] = set(seed_ids)
+        for e in edges:
+            need_ids.add(str(e["source"]))
+            need_ids.add(str(e["target"]))
+        missing = [i for i in need_ids if i not in {n["id"] for n in nodes}]
+        if missing:
+            extra = list(
+                self._run(
+                    "MATCH (n:Entity) WHERE n.id IN $ids "
+                    "RETURN n.id AS id, n.label AS label, n.type AS type, n.description AS description, "
+                    "n.evidence_source AS evidence_source, n.en_identifier AS en_identifier",
+                    ids=missing[:200],
+                )
+            )
+            seen = {n["id"] for n in nodes}
+            for row in extra:
+                rid = row.get("id")
+                if not rid or rid in seen:
+                    continue
+                seen.add(rid)
+                nodes.append(
+                    {
+                        "id": rid,
+                        "label": row.get("label") or rid,
+                        "type": row.get("type") or "Unknown",
+                        "description": row.get("description") or "",
+                        "evidence_source": row.get("evidence_source") or "",
+                        "en_identifier": row.get("en_identifier") or "",
+                    }
+                )
+
         return {"nodes": nodes, "edges": edges}
 
     def save_staging_graph(self, run_id: str, payload: dict[str, Any]) -> None:
