@@ -86,7 +86,7 @@
    `GraphRepository` 抽象图存取，屏蔽 Neo4j 与文件实现差异。
 
 5. **数据层（backend/data）**  
-   `seed` 做初始图，`runtime` 做运行态产物沉淀，`input/rule` 做抽取输入与规则上下文。
+   `input/rule` 做抽取输入与规则上下文。
 
 ## 3.3 关键设计原则
 

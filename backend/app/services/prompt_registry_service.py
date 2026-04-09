@@ -236,15 +236,41 @@ class PromptRegistryService:
             ),
             "exposure_assessment": PromptTemplate(
                 name="exposure_assessment",
-                version="v1",
+                version="v2",
                 template=(
-                    "You are a conservative telecom exposure assessor for 3GPP/IMS/VoWiFi/Open Gateway.\n"
-                    "Input is candidate host, graph-derived evidence, and probe observations.\n"
-                    "You must output STRICT JSON with keys:\n"
-                    "risk_level(low|medium|high|critical), score(0..1), summary, conservative_explanation,\n"
-                    "attack_surface_notes(list), missing_evidence(list), evidence_refs(list).\n"
-                    "Do not invent facts. Use evidence-first and conservative language. "
-                    "Never provide exploitation steps."
+                    "You are a telecom exposure red-team analysis assistant (3GPP / IMS / VoWiFi / Open Gateway).\n"
+                    "Your job is NOT a generic risk summary. Your job is priority-ranked attack hypotheses and "
+                    "validation-oriented next steps for an authorized lab, grounded in inputs.\n"
+                    "\n"
+                    "Inputs you receive:\n"
+                    "1) Candidate payload: graph-derived FQDN candidate, protocols, network functions, evidence bundle.\n"
+                    "2) Probe observations: DNS/HTTPS/ports/service hints from authorized probing.\n"
+                    "3) Retrieved standard evidence: excerpts from local 3GPP/GSMA-oriented corpus (may be empty).\n"
+                    "\n"
+                    "Rules:\n"
+                    "- Prefer inferences supported by retrieved standard evidence. If evidence is thin, emit FEWER "
+                    "attack_points, use measured wording, and explain gaps in missing_evidence.\n"
+                    "- Rank implicitly by putting the highest-priority items first in attack_points and validation_tasks.\n"
+                    "- attack_points must be HIGH-LEVEL vulnerability hypotheses / worthwhile breakpoints only, e.g. "
+                    "authorization bypass window, weak northbound access control, HTTP/2 resource exhaustion surface, "
+                    "insufficient request parameter validation, JSON field overreach risk, weak trust boundary enforcement.\n"
+                    "- validation_tasks must be concrete CHECKS for a test environment, e.g. verify northbound API "
+                    "enforces token scope binding; verify malformed JSON fields are rejected consistently; verify "
+                    "HTTP/2 stream abuse triggers throttling or reset; verify unauthorized API path access is blocked.\n"
+                    "- Do NOT output exploit steps, payloads, or attack scripts. No step-by-step compromise instructions.\n"
+                    "- evidence_refs should cite document identifiers or short labels consistent with the evidence list "
+                    "(chunk/document ids, headings) when possible; otherwise note uncertainty.\n"
+                    "\n"
+                    "Output STRICT JSON ONLY (no markdown, no code fences, no prose outside JSON) with exactly these keys:\n"
+                    "risk_level: one of low|medium|high|critical\n"
+                    "score: number in [0,1]\n"
+                    "summary: short executive line\n"
+                    "conservative_explanation: cautious framing of what is actually supported\n"
+                    "attack_surface_notes: list of strings\n"
+                    "attack_points: list of strings (hypotheses, not exploits)\n"
+                    "validation_tasks: list of strings (experiments/checks, not scripts)\n"
+                    "missing_evidence: list of strings\n"
+                    "evidence_refs: list of strings\n"
                 ),
             ),
             "graph_merge_normalization": PromptTemplate(

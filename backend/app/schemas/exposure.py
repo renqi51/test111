@@ -63,6 +63,14 @@ class ExposureAssessment(BaseModel):
     summary: str = ""
     conservative_explanation: str = ""
     attack_surface_notes: list[str] = Field(default_factory=list)
+    attack_points: list[str] = Field(
+        default_factory=list,
+        description="High-level vulnerability hypotheses / worthwhile breakpoints (not exploit steps).",
+    )
+    validation_tasks: list[str] = Field(
+        default_factory=list,
+        description="Next checks to run in an authorized test environment (not attack scripts).",
+    )
     missing_evidence: list[str] = Field(default_factory=list)
     evidence_refs: list[str] = Field(default_factory=list)
     model_name: str = "deterministic"

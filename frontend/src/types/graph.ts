@@ -98,6 +98,8 @@ export interface ExposureAssessment {
   summary: string;
   conservative_explanation: string;
   attack_surface_notes: string[];
+  attack_points: string[];
+  validation_tasks: string[];
   missing_evidence: string[];
   evidence_refs: string[];
   model_name: string;

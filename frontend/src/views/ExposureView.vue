@@ -27,7 +27,7 @@
           <el-button text type="primary" @click="presetOperator">运营商预设 MCC/MNC</el-button>
         </el-form-item>
       </el-form>
-      <el-checkbox v-model="useLlmInAnalysis">分析时启用 LLM 保守解释</el-checkbox>
+      <el-checkbox v-model="useLlmInAnalysis">分析时启用 LLM（攻击点 / 验证任务 / 标准证据检索）</el-checkbox>
       <el-alert v-if="err" type="error" :title="err" show-icon />
     </div>
 
@@ -155,7 +155,41 @@
             {{ row.source_kind.join(", ") }}
           </template>
         </el-table-column>
-        <el-table-column prop="summary" label="保守结论" min-width="260" />
+        <el-table-column label="潜在攻击点" min-width="220">
+          <template #default="{ row }">
+            <template v-if="row.attack_points?.length">
+              <el-tag
+                v-for="(t, i) in row.attack_points"
+                :key="i"
+                type="danger"
+                effect="plain"
+                size="small"
+                class="tag-gap"
+              >
+                {{ t }}
+              </el-tag>
+            </template>
+            <span v-else class="muted-dash">—</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="验证任务" min-width="220">
+          <template #default="{ row }">
+            <template v-if="row.validation_tasks?.length">
+              <el-tag
+                v-for="(t, i) in row.validation_tasks"
+                :key="i"
+                type="warning"
+                effect="plain"
+                size="small"
+                class="tag-gap"
+              >
+                {{ t }}
+              </el-tag>
+            </template>
+            <span v-else class="muted-dash">—</span>
+          </template>
+        </el-table-column>
+        <el-table-column prop="summary" label="摘要" min-width="260" />
       </el-table>
 
       <el-collapse class="mt-sm">
@@ -235,6 +269,8 @@ const analysisRows = computed(() => {
       risk_level: a?.risk_level ?? "low",
       score: a?.score ?? 0,
       summary: a?.summary ?? "",
+      attack_points: a?.attack_points ?? [],
+      validation_tasks: a?.validation_tasks ?? [],
       dns_ok: !!c.probe_status?.dns_ok,
       https_ok: c.probe_status?.https_ok,
       https_status: c.probe_status?.https_status,
@@ -447,5 +483,15 @@ function onRowClick(row: ExposureRow) {
 }
 .mt-sm {
   margin-top: 10px;
+}
+.tag-gap {
+  margin-right: 6px;
+  margin-bottom: 4px;
+  white-space: normal;
+  height: auto;
+  line-height: 1.35;
+}
+.muted-dash {
+  color: var(--muted);
 }
 </style>

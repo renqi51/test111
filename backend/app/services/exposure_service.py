@@ -17,6 +17,7 @@ from uuid import uuid4
 from app.core.config import settings
 from app.providers.llm_provider import get_llm_provider
 from app.repositories.graph_repository import get_graph_repository
+from app.schemas.extraction_pipeline import EvidencePack
 from app.schemas.exposure import (
     AttackPath,
     CandidateEvidenceBundle,
@@ -28,9 +29,68 @@ from app.schemas.exposure import (
 from app.schemas.probe import ProbeRunRequest
 from app.services import probe_service
 from app.services.prompt_registry_service import prompt_registry
+from app.services.spec_context_service import spec_context_service
 
 # Fallback when the graph has no Open Gateway naming pattern (must stay parameterized).
 DEFAULT_OPEN_GATEWAY_FQDN_TEMPLATE = "api.operator.mnc{mnc}.mcc{mcc}.example"
+
+_EVIDENCE_TEXT_CAP = 4000
+
+
+def _sanitize_str_list(raw: Any) -> list[str]:
+    if raw is None:
+        return []
+    if isinstance(raw, str):
+        s = raw.strip()
+        return [s] if s else []
+    if isinstance(raw, list):
+        out: list[str] = []
+        for x in raw:
+            if x is None:
+                continue
+            s = str(x).strip()
+            if s:
+                out.append(s)
+        return out
+    return []
+
+
+def _serialize_retrieved_evidence(evidence_pack: EvidencePack) -> list[dict[str, Any]]:
+    out: list[dict[str, Any]] = []
+    for it in evidence_pack.items:
+        text = it.text or ""
+        if len(text) > _EVIDENCE_TEXT_CAP:
+            text = text[:_EVIDENCE_TEXT_CAP] + "…"
+        out.append(
+            {
+                "evidence_id": it.evidence_id,
+                "document_id": it.document_id,
+                "heading": it.heading,
+                "relevance_score": it.relevance_score,
+                "text": text,
+            }
+        )
+    return out
+
+
+def _build_exposure_prompt_payload(candidate: ExposureCandidate, evidence_pack: EvidencePack) -> str:
+    probe = candidate.probe_status if isinstance(candidate.probe_status, dict) else {}
+    cand_json = candidate.model_dump(mode="json")
+    evidence = _serialize_retrieved_evidence(evidence_pack)
+    return "\n".join(
+        [
+            "Candidate payload (JSON):",
+            json.dumps(cand_json, ensure_ascii=False, indent=2),
+            "",
+            "Probe observations (JSON):",
+            json.dumps(probe, ensure_ascii=False, indent=2),
+            "",
+            "Retrieved standard evidence (evidence_id, document_id, heading, text, relevance_score):",
+            json.dumps(evidence, ensure_ascii=False, indent=2),
+            "",
+            "Return JSON only.",
+        ]
+    )
 
 
 def _pad_mnc(mnc: str) -> str:
@@ -322,6 +382,8 @@ def _deterministic_assessment(candidate: ExposureCandidate) -> ExposureAssessmen
         summary=f"{candidate.candidate_fqdn} 的潜在暴露面等级为 {level}。",
         conservative_explanation="基于标准模式、图谱上下文与授权探测结果的保守评估。",
         attack_surface_notes=notes,
+        attack_points=[],
+        validation_tasks=[],
         missing_evidence=[] if candidate.evidence.evidence_docs else ["缺少标准条文证据映射"],
         evidence_refs=list(candidate.evidence.evidence_docs),
         model_name="deterministic",
@@ -337,6 +399,10 @@ def _sanitize_assessment(raw: dict[str, Any], fallback: ExposureAssessment) -> E
         score = float(raw.get("score", fallback.score))
     except Exception:  # noqa: BLE001
         score = fallback.score
+    ap_raw = raw.get("attack_points")
+    vt_raw = raw.get("validation_tasks")
+    attack_points = _sanitize_str_list(ap_raw) if ap_raw is not None else list(fallback.attack_points)
+    validation_tasks = _sanitize_str_list(vt_raw) if vt_raw is not None else list(fallback.validation_tasks)
     return ExposureAssessment(
         candidate_id=fallback.candidate_id,
         risk_level=level,  # type: ignore[arg-type]
@@ -344,6 +410,8 @@ def _sanitize_assessment(raw: dict[str, Any], fallback: ExposureAssessment) -> E
         summary=str(raw.get("summary") or fallback.summary),
         conservative_explanation=str(raw.get("conservative_explanation") or fallback.conservative_explanation),
         attack_surface_notes=[str(x) for x in (raw.get("attack_surface_notes") or fallback.attack_surface_notes)],
+        attack_points=attack_points,
+        validation_tasks=validation_tasks,
         missing_evidence=[str(x) for x in (raw.get("missing_evidence") or fallback.missing_evidence)],
         evidence_refs=[str(x) for x in (raw.get("evidence_refs") or fallback.evidence_refs)],
         model_name=str(raw.get("model_name") or "llm"),
@@ -355,11 +423,24 @@ async def _assess_candidate_with_llm(candidate: ExposureCandidate, fallback: Exp
     if not settings.llm_enabled:
         return fallback
     prompt = prompt_registry.get("exposure_assessment")
-    user_prompt = (
-        "Candidate payload:\n"
-        f"{candidate.model_dump_json(ensure_ascii=False)}\n\n"
-        "Return JSON only."
-    )
+    try:
+        evidence_pack = spec_context_service.retrieve_for_candidate(
+            service=candidate.service,
+            network_functions=candidate.network_functions,
+            protocols=candidate.protocols,
+            related_risks=candidate.evidence.related_risks,
+            top_k=settings.exposure_evidence_top_k,
+        )
+    except Exception:  # noqa: BLE001
+        evidence_pack = EvidencePack(
+            pack_id="pack_err",
+            query="",
+            document_id="",
+            scenario_hint="exposure_spec",
+            items=[],
+            retrieval_strategy="error",
+        )
+    user_prompt = _build_exposure_prompt_payload(candidate, evidence_pack)
     try:
         llm = await get_llm_provider().chat_json(
             system_prompt=prompt.template,
@@ -399,6 +480,8 @@ def _report_markdown(data: ExposureAnalysisResponse) -> str:
                 f"- Evidence docs: {', '.join(c.evidence.evidence_docs) or 'n/a'}",
                 f"- Probe: DNS={c.probe_status.get('dns_ok')} HTTPS={c.probe_status.get('https_ok')} status={c.probe_status.get('https_status')}",
                 f"- Summary: {a.summary if a else ''}",
+                f"- Attack points: {', '.join(a.attack_points) if a and a.attack_points else '—'}",
+                f"- Validation tasks: {', '.join(a.validation_tasks) if a and a.validation_tasks else '—'}",
                 "",
             ]
         )

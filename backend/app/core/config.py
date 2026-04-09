@@ -143,5 +143,9 @@ class Settings(BaseSettings):
     probe_verify_tls: bool = True
     probe_tcp_ports: str = "443,80,5060,2152,38412"
 
+    # Exposure: local spec corpus for 3GPP/GSMA retrieval (optional; see spec_context_service)
+    exposure_spec_docs_path: str = str(DATA_DIR / "specs")
+    exposure_evidence_top_k: int = 5
+
 
 settings = Settings()
