@@ -28,6 +28,7 @@ from app.schemas.exposure import (
 )
 from app.schemas.probe import ProbeRunRequest
 from app.services import probe_service
+from app.services.graph_rag_query_service import get_graph_rag_query_service
 from app.services.prompt_registry_service import prompt_registry
 from app.services.spec_context_service import spec_context_service
 
@@ -349,44 +350,37 @@ def _as_candidate(service: str, row: dict[str, Any], idx: int) -> ExposureCandid
     )
 
 
-def _deterministic_assessment(candidate: ExposureCandidate) -> ExposureAssessment:
-    score = 0.2 + 0.3 * min(1.0, candidate.confidence)
-    notes: list[str] = []
-    if any("ipsec" in p.lower() or "ikev2" in p.lower() for p in candidate.protocols):
-        score += 0.1
-        notes.append("涉及隧道/鉴权协议，需关注边界暴露配置。")
-    if any("https" in p.lower() or "rest" in p.lower() for p in candidate.protocols):
-        score += 0.1
-        notes.append("存在 northbound/web 暴露特征，建议校验鉴权与ACL。")
-    if candidate.probe_status.get("permitted"):
-        score += 0.08
-    if candidate.probe_status.get("dns_ok"):
-        score += 0.12
-    if candidate.probe_status.get("https_ok") is True:
-        score += 0.16
-        notes.append("授权探测可达，属于真实可触达候选面。")
-    if candidate.evidence.related_risks:
-        score += min(0.14, 0.04 * len(candidate.evidence.related_risks))
-
-    score = max(0.0, min(1.0, score))
-    if score >= 0.8:
-        level = "high"
-    elif score >= 0.6:
-        level = "medium"
-    else:
-        level = "low"
+async def _graph_rag_assessment_for_candidate(candidate: ExposureCandidate) -> ExposureAssessment:
+    """无硬编码权重：完全依赖 GraphRAG+LLM 的结构化输出。"""
+    if not settings.llm_enabled:
+        return ExposureAssessment(
+            candidate_id=candidate.candidate_id,
+            risk_level="low",
+            score=0.0,
+            summary="LLM/GraphRAG 未配置，无法生成基于图谱的评估。",
+            conservative_explanation="请在授权环境中配置 LLM 与 GraphRAG 后再运行分析。",
+            missing_evidence=["llm_disabled"],
+            evidence_refs=list(candidate.evidence.evidence_docs),
+            model_name="disabled",
+            fallback_used=True,
+        )
+    gr = get_graph_rag_query_service()
+    syn = await gr.synthesize_exposure_assessment(
+        service=candidate.service,
+        candidate=candidate.model_dump(mode="json"),
+    )
     return ExposureAssessment(
         candidate_id=candidate.candidate_id,
-        risk_level=level,
-        score=round(score, 4),
-        summary=f"{candidate.candidate_fqdn} 的潜在暴露面等级为 {level}。",
-        conservative_explanation="基于标准模式、图谱上下文与授权探测结果的保守评估。",
-        attack_surface_notes=notes,
-        attack_points=[],
-        validation_tasks=[],
-        missing_evidence=[] if candidate.evidence.evidence_docs else ["缺少标准条文证据映射"],
-        evidence_refs=list(candidate.evidence.evidence_docs),
-        model_name="deterministic",
+        risk_level=syn.risk_level,
+        score=round(float(syn.score), 4),
+        summary=syn.summary or f"{candidate.candidate_fqdn} 图谱驱动评估。",
+        conservative_explanation=syn.conservative_explanation or "基于 GraphRAG 证据上下文的保守结论。",
+        attack_surface_notes=list(syn.attack_surface_notes),
+        attack_points=list(syn.attack_points),
+        validation_tasks=list(syn.validation_tasks),
+        missing_evidence=list(syn.missing_evidence),
+        evidence_refs=list(dict.fromkeys([*candidate.evidence.evidence_docs, *syn.evidence_refs])),
+        model_name="graph_rag_synthesis",
         fallback_used=False,
     )
 
@@ -419,9 +413,9 @@ def _sanitize_assessment(raw: dict[str, Any], fallback: ExposureAssessment) -> E
     )
 
 
-async def _assess_candidate_with_llm(candidate: ExposureCandidate, fallback: ExposureAssessment) -> ExposureAssessment:
+async def _assess_candidate_with_llm(candidate: ExposureCandidate) -> ExposureAssessment:
     if not settings.llm_enabled:
-        return fallback
+        return await _graph_rag_assessment_for_candidate(candidate)
     prompt = prompt_registry.get("exposure_assessment")
     try:
         evidence_pack = spec_context_service.retrieve_for_candidate(
@@ -441,6 +435,14 @@ async def _assess_candidate_with_llm(candidate: ExposureCandidate, fallback: Exp
             retrieval_strategy="error",
         )
     user_prompt = _build_exposure_prompt_payload(candidate, evidence_pack)
+    sanitize_baseline = ExposureAssessment(
+        candidate_id=candidate.candidate_id,
+        risk_level="low",
+        score=0.0,
+        summary="",
+        evidence_refs=list(candidate.evidence.evidence_docs),
+        model_name="sanitize_baseline",
+    )
     try:
         llm = await get_llm_provider().chat_json(
             system_prompt=prompt.template,
@@ -450,10 +452,9 @@ async def _assess_candidate_with_llm(candidate: ExposureCandidate, fallback: Exp
         )
         raw = llm.raw if isinstance(llm.raw, dict) else {}
         raw["model_name"] = llm.model
-        return _sanitize_assessment(raw, fallback)
+        return _sanitize_assessment(raw, sanitize_baseline)
     except Exception:  # noqa: BLE001
-        fallback.fallback_used = True
-        return fallback
+        return (await _graph_rag_assessment_for_candidate(candidate)).model_copy(update={"fallback_used": True})
 
 
 def _report_markdown(data: ExposureAnalysisResponse) -> str:
@@ -466,8 +467,27 @@ def _report_markdown(data: ExposureAnalysisResponse) -> str:
         f"- Assessments: {len(data.assessments)}",
         f"- Probe integrated: {'yes' if data.probe_run else 'no'}",
         "",
-        "## Candidate Assessments",
+        "## 针对该资产的建议测试操作（汇总）",
     ]
+    concrete: list[str] = []
+    for p in data.attack_paths:
+        for i, step in enumerate(p.techniques, start=1):
+            concrete.append(f"{p.entrypoint} / {p.path_id}: {i}. {step}")
+    for a in data.assessments:
+        for i, task in enumerate(a.validation_tasks, start=1):
+            concrete.append(f"{a.candidate_id} 验证任务: {i}. {task}")
+        for i, ap in enumerate(a.attack_points, start=1):
+            concrete.append(f"{a.candidate_id} 攻击点假设: {i}. {ap}")
+    if concrete:
+        lines.extend(f"- {x}" for x in concrete[:80])
+    else:
+        lines.append("- （当前运行未产生结构化测试步骤；请检查 GraphRAG/LLM 配置与图谱威胁链。）")
+    lines.extend(
+        [
+            "",
+            "## Candidate Assessments",
+        ]
+    )
     by_id = {a.candidate_id: a for a in data.assessments}
     for c in data.candidates:
         a = by_id.get(c.candidate_id)
@@ -485,7 +505,7 @@ def _report_markdown(data: ExposureAnalysisResponse) -> str:
                 "",
             ]
         )
-    lines.append("## Attack Paths")
+    lines.append("## Attack Paths (GraphRAG 驱动)")
     if not data.attack_paths:
         lines.append("- no attack path generated")
     else:
@@ -499,9 +519,15 @@ def _report_markdown(data: ExposureAnalysisResponse) -> str:
                     f"- Likelihood: {p.likelihood}",
                     f"- Impact: {p.impact}",
                     f"- Validation: {p.validation_status}",
-                    "",
+                    f"- Threat vectors: {', '.join(p.threat_vectors) if p.threat_vectors else '—'}",
+                    f"- Vulnerabilities (context): {', '.join(p.vulnerabilities) if p.vulnerabilities else '—'}",
+                    f"- GraphRAG confidence: {p.graph_rag_confidence}",
                 ]
             )
+            if p.techniques:
+                lines.append("- 建议测试操作:")
+                lines.extend(f"  {i}. {t}" for i, t in enumerate(p.techniques, start=1))
+            lines.append("")
     lines.extend(
         [
             "## Safety Notice",
@@ -512,51 +538,54 @@ def _report_markdown(data: ExposureAnalysisResponse) -> str:
     return "\n".join(lines)
 
 
-def _build_attack_paths(
+async def _build_attack_paths_via_graph_rag(
     service: str,
     candidates: list[ExposureCandidate],
     assessments: list[ExposureAssessment],
 ) -> list[AttackPath]:
+    """通过 GraphRAG 问答管线拉取子图并由 LLM 结构化填充 AttackPath（禁止本地 impact 推断）。"""
     by_id = {a.candidate_id: a for a in assessments}
+    gr = get_graph_rag_query_service()
     out: list[AttackPath] = []
     for idx, c in enumerate(candidates):
         a = by_id.get(c.candidate_id)
         if not a:
             continue
-        pivots = []
-        if c.probe_status.get("service_hints"):
-            pivots.extend([f"fingerprint:{x}" for x in c.probe_status.get("service_hints", [])[:3]])
-        pivots.extend([f"nf:{nf}" for nf in c.network_functions[:2]])
-        likelihood = min(1.0, 0.35 + 0.45 * a.score + (0.1 if c.probe_status.get("https_ok") else 0.0))
-        status = (
-            "partially_validated"
-            if c.probe_status.get("dns_ok")
-            or c.probe_status.get("open_ports")
-            or c.probe_status.get("open_udp_ports")
-            else "hypothesis"
+        cand_dump = c.model_dump(mode="json")
+        batch = await gr.synthesize_exposure_attack_path(
+            service=service,
+            candidate=cand_dump,
+            assessment=a.model_dump(mode="json"),
         )
-        if c.probe_status.get("https_ok") is True:
-            status = "validated"
-        impact = "low"
-        if any("gtp" in s.lower() for s in c.probe_status.get("service_hints", [])):
-            impact = "high"
-        elif a.risk_level in {"high", "critical"}:
-            impact = "medium"
+        row = batch.paths[0] if batch.paths else None
+        pivots = list(row.pivots) if row else []
+        if c.probe_status.get("service_hints"):
+            pivots = list(
+                dict.fromkeys(
+                    [*pivots, *[f"probe_hint:{x}" for x in c.probe_status.get("service_hints", [])[:5]]],
+                )
+            )
+        techniques = list(row.techniques) if row else []
+        tvs = list(row.threat_vectors) if row else []
+        vulns = list(row.vulnerabilities) if row else []
+        refs = list(row.evidence_refs) if row else []
         out.append(
             AttackPath(
                 path_id=f"path_{service.lower().replace(' ', '_')}_{idx:02d}",
                 candidate_id=c.candidate_id,
                 entrypoint=c.candidate_fqdn,
-                pivots=list(dict.fromkeys(pivots)),
-                target_asset=c.network_functions[0] if c.network_functions else service,
-                likelihood=round(likelihood, 4),
-                impact=impact,  # type: ignore[arg-type]
-                prerequisites=[
-                    "authorized laboratory scope",
-                    "target in probe allowlist/open policy",
-                ],
-                evidence_refs=list(dict.fromkeys(c.evidence.evidence_docs + a.evidence_refs)),
-                validation_status=status,  # type: ignore[arg-type]
+                pivots=pivots,
+                target_asset=(row.target_asset if row and row.target_asset else (c.network_functions[0] if c.network_functions else service)),
+                likelihood=round(float(row.likelihood), 4) if row else 0.0,
+                impact=(row.impact if row else "medium"),  # type: ignore[arg-type]
+                prerequisites=list(row.prerequisites) if row else ["authorized laboratory scope"],
+                evidence_refs=list(dict.fromkeys([*c.evidence.evidence_docs, *a.evidence_refs, *refs])),
+                validation_status=(row.validation_status if row else "hypothesis"),  # type: ignore[arg-type]
+                techniques=techniques,
+                threat_vectors=tvs,
+                vulnerabilities=vulns,
+                graph_rag_confidence=round(float(row.confidence), 4) if row else 0.0,
+                graph_rag_analyst_notes=list(batch.analyst_notes),
             )
         )
     return out
@@ -597,15 +626,12 @@ async def analyze_exposure(
             if "probe_observation" not in c.evidence.source_kind:
                 c.evidence.source_kind.append("probe_observation")
 
-    deterministic = [_deterministic_assessment(c) for c in candidates]
     assessments: list[ExposureAssessment]
     if use_llm:
-        assessments = await asyncio.gather(
-            *[_assess_candidate_with_llm(c, deterministic[idx]) for idx, c in enumerate(candidates)]
-        )
+        assessments = await asyncio.gather(*[_assess_candidate_with_llm(c) for c in candidates])
     else:
-        assessments = deterministic
-    attack_paths = _build_attack_paths(service=service, candidates=candidates, assessments=assessments)
+        assessments = await asyncio.gather(*[_graph_rag_assessment_for_candidate(c) for c in candidates])
+    attack_paths = await _build_attack_paths_via_graph_rag(service=service, candidates=candidates, assessments=assessments)
 
     summary = {
         "total_candidates": len(candidates),

@@ -106,6 +106,10 @@ async def _run(*, dry_run: bool, full_file: bool) -> int:
     after = repo.get_graph()
     n1, e1 = len(after["nodes"]), len(after["edges"])
     print(f"[verify] graph after:  nodes={n1} edges={e1} (delta nodes +{n1 - n0}, edges +{e1 - e0})")
+    tv = sum(1 for n in after["nodes"] if str(n.get("type", "")) == "ThreatVector")
+    vul = sum(1 for n in after["nodes"] if str(n.get("type", "")) == "Vulnerability")
+    vedges = sum(1 for e in after["edges"] if str(e.get("interaction", "")) in {"vulnerable_to", "enables_vector"})
+    print(f"[verify] threat graph counts: ThreatVector={tv} Vulnerability={vul} threat_edges={vedges}")
     print("[verify] OK: merge_nodes_edges completed")
     return 0
 

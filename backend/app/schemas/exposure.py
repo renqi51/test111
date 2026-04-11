@@ -88,6 +88,14 @@ class AttackPath(BaseModel):
     prerequisites: list[str] = Field(default_factory=list)
     evidence_refs: list[str] = Field(default_factory=list)
     validation_status: Literal["hypothesis", "partially_validated", "validated"] = "hypothesis"
+    techniques: list[str] = Field(
+        default_factory=list,
+        description="GraphRAG+LLM 给出的授权测试动作序列。",
+    )
+    threat_vectors: list[str] = Field(default_factory=list)
+    vulnerabilities: list[str] = Field(default_factory=list)
+    graph_rag_confidence: float = Field(default=0.0, ge=0.0, le=1.0)
+    graph_rag_analyst_notes: list[str] = Field(default_factory=list)
 
 
 class ExposureAnalysisResponse(BaseModel):

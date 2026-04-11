@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import logging
 from pathlib import Path
 from typing import Any, AsyncIterator
@@ -13,6 +14,7 @@ from pymilvus.orm.connections import connections
 from app.core.config import settings
 from app.providers.llm_provider import get_llm_provider
 from app.repositories.graph_repository import get_graph_repository
+from app.schemas.graph_rag_synthesis import AttackPathSynthesisBatch, AttackPathSynthesisRow, ExposureAssessmentSynthesis
 
 logger = logging.getLogger(__name__)
 
@@ -347,6 +349,122 @@ class GraphRAGQueryService:
 
         logger.info("[GraphRAG] query done answer_chars=%s", len(payload.answer or ""))
         return payload.model_dump()
+
+    async def synthesize_exposure_attack_path(
+        self,
+        *,
+        service: str,
+        candidate: dict[str, Any],
+        assessment: dict[str, Any] | None,
+        top_k: int | None = None,
+    ) -> AttackPathSynthesisBatch:
+        """
+        基于 GraphRAG 混合检索上下文，让 LLM 输出结构化攻击路径（非硬编码打分）。
+        仅使用图谱+向量证据与给定候选/评估事实，不得臆造未在上下文中出现的 CVE 细节。
+        """
+        q = (
+            "动态攻击面：针对以下暴露候选，结合 3GPP/CAMARA 图谱中的 ThreatVector、Vulnerability、"
+            "Protocol、NetworkFunction 关系，推导授权测试场景下的具体验证动作与威胁链路。"
+            f"\n服务上下文: {service}\n候选 JSON:\n{json.dumps(candidate, ensure_ascii=False)}"
+        )
+        if assessment:
+            q += f"\n已有评估 JSON（可为空字段）:\n{json.dumps(assessment, ensure_ascii=False)}"
+        prep = await self._retrieve_context(question=q, top_k=top_k)
+        if not prep.get("ok"):
+            return AttackPathSynthesisBatch(
+                paths=[],
+                analyst_notes=[str(x) for x in (prep.get("error_payload", {}) or {}).get("notes", [])] or ["retrieval_unavailable"],
+            )
+        graph_ctx = list(prep["graph_ctx"])
+        chunk_ctx = list(prep["chunk_ctx"])
+        citations = list(prep["citations"])
+        schema_json = json.dumps(AttackPathSynthesisBatch.model_json_schema(), ensure_ascii=False)
+        system_prompt = (
+            "你是 3GPP / 运营商开放网络攻击面分析引擎。"
+            "必须严格基于提供的图谱上下文与原文上下文输出 JSON，字段需匹配给定 Schema。"
+            "techniques 必须是可落地的授权渗透测试步骤（例如协议抓包点位、鉴权边界测试），不要输出利用脚本或非法操作指令。"
+            "threat_vectors / vulnerabilities 使用简短中文短语，须能在上下文证据中找到对应或合理概括支撑。"
+            "paths 中每条必须包含 confidence 字段（0~1），表示该路径结构化结论与证据对齐程度。"
+        )
+        user_prompt = (
+            f"{q}\n\n"
+            "图谱上下文:\n"
+            + ("\n".join(f"- {x}" for x in graph_ctx) if graph_ctx else "- (none)")
+            + "\n\n原文上下文:\n"
+            + ("\n".join(f"- {x}" for x in chunk_ctx) if chunk_ctx else "- (none)")
+            + f"\n\ncitations 建议引用: {citations}\n"
+            f"Schema:\n{schema_json}\n"
+            "输出 JSON：顶层为 paths（通常 1 条，对应本候选）与 analyst_notes。"
+        )
+        try:
+            llm_res = await get_llm_provider().chat_json(
+                system_prompt=system_prompt,
+                user_prompt=user_prompt,
+                model_name=settings.llm_model_name,
+                temperature=0.15,
+            )
+            raw = llm_res.raw if isinstance(llm_res.raw, dict) else {}
+            return AttackPathSynthesisBatch.model_validate(raw)
+        except Exception as exc:  # noqa: BLE001
+            logger.exception("synthesize_exposure_attack_path failed: %s", str(exc)[:220])
+            return AttackPathSynthesisBatch(
+                paths=[
+                    AttackPathSynthesisRow(
+                        techniques=[f"结构化合成失败: {str(exc)[:120]}"],
+                        validation_status="hypothesis",
+                    )
+                ],
+                analyst_notes=["llm_struct_parse_error"],
+            )
+
+    async def synthesize_exposure_assessment(
+        self,
+        *,
+        service: str,
+        candidate: dict[str, Any],
+        top_k: int | None = None,
+    ) -> ExposureAssessmentSynthesis:
+        """在缺少主评估 LLM 或需要同源 GraphRAG 评估时，生成结构化风险结论。"""
+        q = (
+            "基于图谱与文档证据，对以下暴露候选给出保守风险评估与可执行验证任务。"
+            f"\n服务: {service}\n候选:\n{json.dumps(candidate, ensure_ascii=False)}"
+        )
+        prep = await self._retrieve_context(question=q, top_k=top_k)
+        if not prep.get("ok"):
+            return ExposureAssessmentSynthesis(
+                summary="GraphRAG 检索不可用。",
+                missing_evidence=["graph_rag_context_unavailable"],
+            )
+        graph_ctx = list(prep["graph_ctx"])
+        chunk_ctx = list(prep["chunk_ctx"])
+        citations = list(prep["citations"])
+        schema_json = json.dumps(ExposureAssessmentSynthesis.model_json_schema(), ensure_ascii=False)
+        system_prompt = (
+            "你是电信暴露面风险评估助手。仅依据上下文证据输出 JSON，匹配 Schema。"
+            "attack_points 描述值得关注的断点；validation_tasks 为授权环境下的检查步骤。"
+        )
+        user_prompt = (
+            f"{q}\n\n图谱:\n"
+            + ("\n".join(f"- {x}" for x in graph_ctx) if graph_ctx else "- (none)")
+            + "\n\n原文:\n"
+            + ("\n".join(f"- {x}" for x in chunk_ctx) if chunk_ctx else "- (none)")
+            + f"\n\nevidence_refs 优先: {citations}\nSchema:\n{schema_json}\n"
+        )
+        try:
+            llm_res = await get_llm_provider().chat_json(
+                system_prompt=system_prompt,
+                user_prompt=user_prompt,
+                model_name=settings.llm_model_name,
+                temperature=0.12,
+            )
+            raw = llm_res.raw if isinstance(llm_res.raw, dict) else {}
+            return ExposureAssessmentSynthesis.model_validate(raw)
+        except Exception as exc:  # noqa: BLE001
+            logger.exception("synthesize_exposure_assessment failed: %s", str(exc)[:220])
+            return ExposureAssessmentSynthesis(
+                summary=f"评估合成异常: {str(exc)[:120]}",
+                missing_evidence=["llm_struct_parse_error"],
+            )
 
     async def ask_stream(self, *, question: str, top_k: int | None = None) -> AsyncIterator[dict[str, Any]]:
         prep = await self._retrieve_context(question=question, top_k=top_k)

@@ -11,7 +11,14 @@ router = APIRouter(tags=["agent"])
 async def agent_run(body: dict):
     goal = body.get("goal") or "unspecified goal"
     text = body.get("text")
-    run = await run_agent(goal=goal, text=text)
+    run = await run_agent(
+        goal=goal,
+        text=text,
+        target_asset=body.get("target_asset"),
+        service=body.get("service"),
+        mcc=body.get("mcc"),
+        mnc=body.get("mnc"),
+    )
     return {"run": run}
 
 

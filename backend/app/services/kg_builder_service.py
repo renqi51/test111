@@ -172,6 +172,9 @@ class KGBuilderService:
         system_prompt = (
             "你是电信标准知识图谱抽取助手。"
             "只抽取有证据支持的信息，不要臆造，不要补全未出现事实。"
+            "当文本出现可利用面、缺陷、错误配置、威胁手法时，必须优先抽取为 "
+            "type=Vulnerability（CVE/错误配置/标准缺陷）或 type=ThreatVector（攻击载荷/手法），"
+            "并通过 vulnerable_to / enables_vector 等与 Protocol、NetworkFunction、Interface 建立有证据的边。"
             "返回 JSON，必须满足给定 Schema。"
         )
         user_prompt = (
@@ -181,7 +184,8 @@ class KGBuilderService:
             "输出要求:\n"
             "1) 仅返回 nodes / edges\n"
             "2) 每个 node/edge 尽量包含 evidence[source_file, chunk_index, quote]\n"
-            "3) 无证据支持的实体关系不要输出\n\n"
+            "3) 无证据支持的实体关系不要输出\n"
+            "4) 若存在协议层面的弱点或攻击路径描述，应落地为 Vulnerability/ThreatVector 节点及 vulnerable_to、enables_vector 关系\n\n"
             f"文本:\n{chunk_text_value}"
         )
         try:
