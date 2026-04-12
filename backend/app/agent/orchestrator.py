@@ -8,10 +8,10 @@ from uuid import uuid4
 
 from app.core.config import settings
 from app.providers.llm_provider import get_llm_provider
-from app.schemas.agent_react import PentestPlaybookResponse
+from app.schemas.agent_react import PentestPlaybookResponse, PlaybookEvidenceItem
 from app.schemas.graph_rag_synthesis import ReActAgentDecision
 from app.schemas.probe import ProbeRunRequest
-from app.services import probe_service
+from app.services import exploit_sandbox_service, probe_service
 from app.services.graph_rag_query_service import get_graph_rag_query_service
 
 
@@ -35,6 +35,8 @@ class AgentRun:
     steps: List[AgentStep]
     final_recommendations: List[str] = field(default_factory=list)
     context: Dict[str, Any] = field(default_factory=dict)
+    # 含 recommendations + evidence（沙箱实测），便于前端与审计消费完整结构化结果。
+    final_playbook: Dict[str, Any] = field(default_factory=dict)
 
 
 _RUNS: Dict[str, AgentRun] = {}
@@ -53,13 +55,51 @@ def _react_system_prompt() -> str:
         "   将 [协议或端口列表] 替换为观测中的具体 token（如 IKEv2/UDP500、GTP-U/2152、SIP/TCP5060、HTTPS/443）。\n"
         "3) Exploit Plan — 在已有 graph_rag 答案后，才能 action=synthesize："
         "综合 probe + graph_rag，输出可落地的验证动作、抓包点位、畸形用例思路、DoS/越权验证路径（仍限于授权靶场）。\n"
-        "4) finish — 当 synthesize 已成功写入 observations 后，用 action=finish 结束。\n\n"
+        "4) Trigger — synthesize 成功后，下一轮必须 action=execute_verify："
+        "action_input.command 填一条完整 shell（须含字面目标 IP 以通过 CIDR 白名单，例如 nmap -sU -p500 192.0.2.1）；"
+        "可选 action_input.title 描述验证点。\n"
+        "5) finish — 仅当 observations 中已存在 kind=sandbox_execute（沙箱真实回显）后，才允许 action=finish；"
+        "最终结论必须基于沙箱 stdout/stderr，不得编造未执行命令的结果。\n\n"
         "action 枚举:\n"
-        "- probe: action_input.targets（必填，主机/IP 列表字符串）, 可选 context。\n"
-        "- graph_rag: action_input.question（必填，且符合上面 Weaponize 模板）。\n"
-        "- synthesize: action_input 可为 {}；须产出具体 Payload/工具参数级思路（非空泛合规声明）。\n"
+        "- probe: action_input.targets（必填）, 可选 context。\n"
+        "- graph_rag: action_input.question（必填，且符合 Weaponize 模板）。\n"
+        "- synthesize: action_input 可为 {}。\n"
+        "- execute_verify: action_input.command（必填，单行 shell）；底层为 asyncio.create_subprocess_shell + 超时 + CIDR 校验。\n"
         "- finish: action_input 可为 {}。\n"
-        "禁止：在未执行 probe 前调用 graph_rag；在缺少 graph_rag 时调用 synthesize；编造未出现在观测中的端口/协议。"
+        "禁止：在未执行 probe 前调用 graph_rag；在缺少 graph_rag 时调用 synthesize；"
+        "在缺少 sandbox_execute 时调用 finish；编造未出现在观测中的端口/协议。"
+    )
+
+
+def _evidence_from_sandbox_result(title: str, cmd: str, result: dict[str, Any]) -> PlaybookEvidenceItem:
+    """将沙箱原始 dict 转为 PlaybookEvidenceItem；validation_status 完全由真实回显与退出码推导。"""
+    if result.get("blocked"):
+        return PlaybookEvidenceItem(
+            title=title or "sandbox",
+            validation_status="Skipped",
+            command_executed=cmd,
+            sandbox_decision_reason=str(result.get("reason") or "blocked"),
+        )
+    if result.get("timed_out"):
+        return PlaybookEvidenceItem(
+            title=title or "sandbox",
+            validation_status="Validated_Failed",
+            command_executed=cmd,
+            exit_code=None,
+            stdout_excerpt=str(result.get("stdout") or ""),
+            stderr_excerpt=str(result.get("stderr") or ""),
+            sandbox_decision_reason=str(result.get("reason") or "timed_out"),
+        )
+    code = result.get("exit_code")
+    ok = code == 0
+    return PlaybookEvidenceItem(
+        title=title or "sandbox",
+        validation_status="Validated_Success" if ok else "Validated_Failed",
+        command_executed=cmd,
+        exit_code=code if isinstance(code, int) else None,
+        stdout_excerpt=str(result.get("stdout") or "")[:4000],
+        stderr_excerpt=str(result.get("stderr") or "")[:4000],
+        sandbox_decision_reason=str(result.get("reason") or "executed"),
     )
 
 
@@ -73,8 +113,7 @@ async def run_agent(
     mnc: str | None = None,
 ) -> AgentRun:
     """
-    ReAct 循环：Reason（LLM 结构化决策） + Act（真实 probe / GraphRAG / 综合 LLM）。
-    不再使用写死的 exec_skill 线性流水线。
+    ReAct 循环：Reason（LLM 结构化决策） + Act（真实 probe / GraphRAG / 综合 LLM / 沙箱 execute_verify）。
     """
     run_id = str(uuid4())
     now = datetime.now(timezone.utc).isoformat()
@@ -89,8 +128,13 @@ async def run_agent(
         "mcc": mcc or "",
         "mnc": mnc or "",
         "observations": observations,
+        "synth_done": False,
+        "sandbox_done": False,
+        "playbook_evidence": [],
+        "last_rationale": "",
     }
     final_recommendations: list[str] = []
+    final_playbook: dict[str, Any] = {}
 
     if not settings.llm_enabled:
         run = AgentRun(
@@ -100,12 +144,13 @@ async def run_agent(
             steps=steps,
             final_recommendations=["LLM 未配置：ReAct 决策与综合无法执行。"],
             context=ctx,
+            final_playbook=final_playbook,
         )
         _RUNS[run_id] = run
         return run
 
     schema_json = json.dumps(ReActAgentDecision.model_json_schema(), ensure_ascii=False)
-    max_turns = 12
+    max_turns = 14
 
     for turn in range(1, max_turns + 1):
         started = datetime.now(timezone.utc).isoformat()
@@ -182,44 +227,97 @@ async def run_agent(
                 )
                 playbook = PentestPlaybookResponse.model_validate(syn.raw if isinstance(syn.raw, dict) else {})
                 final_recommendations = list(playbook.recommendations)
+                ctx["last_rationale"] = playbook.rationale or ""
                 out_payload = playbook.model_dump()
                 observations.append({"kind": "synthesize", "playbook": out_payload})
+                ctx["synth_done"] = True
             except Exception as exc:  # noqa: BLE001
                 out_payload = {"error": str(exc)}
                 status = "error"
+        elif decision.action == "execute_verify":
+            # command: 单行 shell，将交给 exploit_sandbox_service 做 CIDR/黑名单校验后再 create_subprocess_shell。
+            cmd = (decision.action_input.get("command") or decision.action_input.get("cmd") or "").strip()
+            title = (decision.action_input.get("title") or "execute_verify").strip()
+            if not cmd:
+                out_payload = {"error": "empty_execute_verify_command"}
+                status = "error"
+            else:
+                result = await exploit_sandbox_service.run_sandbox_command(cmd)
+                out_payload = result
+                observations.append({"kind": "sandbox_execute", "command": cmd, "result": result})
+                ev = _evidence_from_sandbox_result(title, cmd, result)
+                ctx["playbook_evidence"].append(ev.model_dump())
+                ctx["sandbox_done"] = True
         elif decision.action == "finish":
-            out_payload = {"done": True}
-            steps.append(
-                AgentStep(
-                    index=turn,
-                    skill_name="react_finish",
-                    input=dict(decision.action_input),
-                    output=out_payload,
-                    started_at=started,
-                    finished_at=datetime.now(timezone.utc).isoformat(),
-                    status="ok",
-                    thought=decision.thought,
+            if ctx.get("synth_done") and not ctx.get("sandbox_done"):
+                out_payload = {
+                    "error": "finish_blocked_missing_execute_verify",
+                    "hint": "必须先执行 action=execute_verify 并产生 kind=sandbox_execute 观测后再 finish。",
+                }
+                status = "error"
+                steps.append(
+                    AgentStep(
+                        index=turn,
+                        skill_name="react_finish",
+                        input=dict(decision.action_input),
+                        output=out_payload,
+                        started_at=started,
+                        finished_at=datetime.now(timezone.utc).isoformat(),
+                        status="error",
+                        thought=decision.thought,
+                    )
                 )
-            )
-            ctx["observations"] = observations
-            break
+                ctx["observations"] = observations
+                continue
+            else:
+                out_payload = {"done": True}
+                evidence_objs = [PlaybookEvidenceItem.model_validate(x) for x in ctx.get("playbook_evidence", [])]
+                fp = PentestPlaybookResponse(
+                    recommendations=final_recommendations,
+                    rationale=ctx.get("last_rationale", ""),
+                    evidence=evidence_objs,
+                )
+                final_playbook = fp.model_dump()
+                steps.append(
+                    AgentStep(
+                        index=turn,
+                        skill_name="react_finish",
+                        input=dict(decision.action_input),
+                        output=out_payload,
+                        started_at=started,
+                        finished_at=datetime.now(timezone.utc).isoformat(),
+                        status="ok",
+                        thought=decision.thought,
+                    )
+                )
+                ctx["observations"] = observations
+                break
         else:
             out_payload = {"error": f"unknown_action:{decision.action}"}
             status = "error"
 
         ctx["observations"] = observations
-        steps.append(
-            AgentStep(
-                index=turn,
-                skill_name=f"react_{decision.action}",
-                input=dict(decision.action_input),
-                output=out_payload,
-                started_at=started,
-                finished_at=finished,
-                status=status,
-                thought=decision.thought,
+        if decision.action != "finish":
+            steps.append(
+                AgentStep(
+                    index=turn,
+                    skill_name=f"react_{decision.action}",
+                    input=dict(decision.action_input),
+                    output=out_payload,
+                    started_at=started,
+                    finished_at=finished,
+                    status=status,
+                    thought=decision.thought,
+                )
             )
-        )
+
+    if not final_playbook and final_recommendations:
+        evidence_objs = [PlaybookEvidenceItem.model_validate(x) for x in ctx.get("playbook_evidence", [])]
+        final_playbook = PentestPlaybookResponse(
+            recommendations=final_recommendations,
+            rationale=ctx.get("last_rationale", ""),
+            evidence=evidence_objs,
+        ).model_dump()
 
     run = AgentRun(
         id=run_id,
@@ -228,6 +326,7 @@ async def run_agent(
         steps=steps,
         final_recommendations=final_recommendations,
         context=ctx,
+        final_playbook=final_playbook,
     )
     _RUNS[run_id] = run
     return run

@@ -6,12 +6,13 @@ from __future__ import annotations
 
 import asyncio
 import ipaddress
+import random
 import socket
 import ssl
 import struct
 import time
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, Callable
 from urllib.parse import urlparse
 from uuid import uuid4
 
@@ -24,6 +25,167 @@ _LAST_RUN: dict[str, Any] | None = None
 
 # 3GPP / 核心网常见 UDP 服务（授权实验室内连通性探测）
 UDP_PROBE_PORTS: tuple[int, ...] = (500, 4500, 2152)
+
+# SCTP 探测端口：38412 为 3GPP NG-RAN 与 AMF 间 N2 口 NGAP 在现网中最常见的 SCTP 偶联目的端口（TS 38.412）。
+# 注意：与 TCP 38412 无必然等价关系；此处仅针对 SCTP 四元组发送 INIT，不依赖 TCP connect 成功。
+SCTP_PROBE_PORTS: tuple[int, ...] = (38412,)
+
+# ---------------------------------------------------------------------------
+# Scapy 可选加载：未安装时 SCTP 探测返回明确原因字符串，避免“假装已扫 SCTP”。
+# sr1 的类型在运行时由 Scapy 提供；此处用 Callable 描述“发送 1 包并收 1 应”的抽象接口便于单测打桩。
+# ---------------------------------------------------------------------------
+_scapy_sr1: Callable[..., Any] | None
+try:
+    from scapy.all import sr1 as _scapy_sr1_import  # type: ignore[import-untyped, import-not-found]
+
+    _scapy_sr1 = _scapy_sr1_import
+    _SCAPY_AVAILABLE = True
+except ImportError:
+    _scapy_sr1 = None
+    _SCAPY_AVAILABLE = False
+
+
+def _sr1_dispatch(pkt: Any, timeout: float, *, verbose: int = 0) -> Any:
+    """
+    对 Scapy sr1 的薄封装，便于单元测试 patch 本函数而无需 import 重型 scapy 依赖。
+
+    参数:
+    - pkt: Scapy 已构造好的分层报文（如 IP/SCTP/SCTPChunkInit），由上层保证 dst 合法且在授权范围内。
+    - timeout: 秒；传给 sr1 作为“等待一个应答”的最大阻塞时间，防止探针无限挂起。
+    - verbose: 传入 sr1 的 verbose；0 表示关闭交互式刷屏日志。
+    """
+    if _scapy_sr1 is None:
+        raise RuntimeError("scapy_sr1_unavailable")
+    return _scapy_sr1(pkt, timeout=timeout, verbose=verbose)
+
+
+def _resolve_target_ip_for_l3(host: str) -> tuple[str | None, str]:
+    """
+    将 FQDN 解析为用于 L3（IP/IPv6）封装的第一个可用地址。
+
+    返回:
+    - (ip_string, "ipv4"|"ipv6"): 优先 IPv4，便于与多数实验网 AMF 监听栈对齐；若无 v4 再退回 v6。
+    - (None, "ipv4"): 解析失败时的占位，调用方应跳过 Scapy 发包。
+    """
+    # 使用默认 getaddrinfo（不传 type），避免 SOCK_RAW 在 Windows 等平台对解析路径不兼容。
+    try:
+        infos = socket.getaddrinfo(host, None)
+    except OSError:
+        return None, "ipv4"
+    for fam, _, _, _, sockaddr in infos:
+        if fam == socket.AF_INET and sockaddr:
+            return str(sockaddr[0]), "ipv4"
+    for fam, _, _, _, sockaddr in infos:
+        if fam == socket.AF_INET6 and sockaddr:
+            return str(sockaddr[0]), "ipv6"
+    return None, "ipv4"
+
+
+def _sctp_init_probe_sync(host: str, dport: int, timeout: float) -> list[str]:
+    """
+    在单端口上发送 SCTP INIT（Scapy），并记录 INIT-ACK/静默丢弃/异常。
+
+    SCTP INIT 语义简述（RFC 4960）:
+    - INIT 分片用于发起偶联：携带 initiate_tag、窗口、流数等；对端正常应回 INIT-ACK 或 ABORT。
+    - 本函数不关心业务层 NGAP，只利用传输层握手暴露“SCTP 栈是否对公网源开放响应”。
+
+    参数:
+    - host: 目标主机名（已通过策略白名单）；内部解析为 IP 写入 IP()/IPv6() 的 dst。
+    - dport: SCTP 目的端口；38412 对应 NGAP 监听端口场景。
+    - timeout: sr1 等待时间（秒）；与全局 probe 超时对齐，防止拖垮事件循环（调用方应放在 to_thread 中）。
+    """
+    if not _SCAPY_AVAILABLE:
+        return [f"sctp:{dport}:SCAPY_NOT_INSTALLED pip_install_scapy"]
+
+    dst_ip, fam = _resolve_target_ip_for_l3(host)
+    if not dst_ip:
+        return [f"sctp:{dport}:NO_IP_FOR_L3 host_resolve_failed"]
+
+    sport = random.randint(30000, 60000)
+    try:
+        if fam == "ipv4":
+            # IP(dst=...): IPv4 目的地址字段；ttl 使用 Scapy 默认，由内核路由表决定转发路径。
+            from scapy.layers.inet import IP  # noqa: PLC0415
+            from scapy.layers.sctp import SCTP, SCTPChunkInit  # noqa: PLC0415
+
+            # SCTP(sport,dport): SCTP 公共头源/目的端口；dport 与 3GPP 侧监听进程绑定。
+            # SCTPChunkInit(): 构造 INIT 分片；内部字段（initiate_tag、a_rwnd、outbound_streams 等）
+            #                  由 Scapy 填默认值，足以触发多数实现返回 INIT-ACK 或 ABORT。
+            pkt = IP(dst=dst_ip) / SCTP(sport=sport, dport=dport) / SCTPChunkInit()
+        else:
+            # IPv6(dst=...): 双栈目标走 SCTP over IPv6；其余与 IPv4 分支语义一致。
+            from scapy.layers.inet6 import IPv6  # noqa: PLC0415
+            from scapy.layers.sctp import SCTP, SCTPChunkInit  # noqa: PLC0415
+
+            pkt = IPv6(dst=dst_ip) / SCTP(sport=sport, dport=dport) / SCTPChunkInit()
+
+        # sr1: 发 1 包收 1 答；若超时无答返回 None —— 常见于防火墙静默丢或端口未监听 SCTP。
+        ans = _sr1_dispatch(pkt, timeout=timeout, verbose=0)
+        if ans is None:
+            return [f"sctp:{dport}:INIT_timeout_or_silent_drop sport={sport} dst_ip={dst_ip}"]
+        return [f"sctp:{dport}:INIT_reply sport={sport} dst_ip={dst_ip} summary={ans.summary()}"]
+    except Exception as exc:  # noqa: BLE001 — 捕获 WinPcap/Npcap 未装、权限不足等环境错误并回传截断信息
+        return [f"sctp:{dport}:INIT_send_failed sport={sport} err={str(exc)[:220]}"]
+
+
+def _sctp_probe_all_ports_sync(host: str, ports: tuple[int, ...], timeout: float) -> list[str]:
+    """对多个 SCTP 端口顺序执行 INIT 探测；顺序扫描避免同一主机上突发 Raw 包风暴。"""
+    out: list[str] = []
+    for p in ports:
+        out.extend(_sctp_init_probe_sync(host, p, timeout))
+    return out
+
+
+async def _probe_sbi_http2_unauth(host: str) -> dict[str, Any]:
+    """
+    使用 httpx 强制启用 HTTP/2 客户端栈，对典型 5G SBI 路径发起带伪造 Bearer 的 GET，用于越权/鉴权边界观测。
+
+    设计要点:
+    - http2=True: 要求底层尝试 TLS ALPN 协商 h2；若对端仅 http/1.1，httpx 会记录实际协商版本，便于区分“老栈”与“真 SBI”。
+    - Authorization: 使用结构上像 JWT 但签名无效的 Bearer，逼迫 NRF/UDM 等网元走完整 token 校验分支，
+      从而用 HTTP 状态码区分：401（未认证）、403（已认证无权限）、200（异常放行风险）等。
+    - follow_redirects=False: 禁止跟随 302 到门户页，避免把登录页 HTML 误判为 API 成功响应。
+    - verify: 与全局 probe 配置一致，防止实验室内错误信任非法 TLS 证书。
+    """
+    timeout = httpx.Timeout(settings.probe_timeout_sec, connect=min(3.0, settings.probe_timeout_sec))
+    # 常见 SBI 路径（3GPP TS 29.510 / 29.503 等）：使用占位 SUPI/IMSI 仅探测路由与鉴权层，不声称真实用户存在。
+    paths = (
+        "/nnrf-nfm/v1/nf-instances",
+        "/nudm-ueau/v1/imsi-460001234567890/security-information",
+    )
+    out: dict[str, Any] = {"paths": {}, "note": "unauth_bearer_probe_forbidden_bypass_check"}
+    headers = {
+        # Bearer 令牌三段式外观 + 明显无效签名：触发 API 网关解析与验签，而非被当作缺失头直接 401。
+        "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.e30.forced-invalid-sig",
+        "Accept": "application/json",
+        "User-Agent": "5g-core-sbi-redteam-probe/1.0",
+    }
+    base = f"https://{host}"
+    try:
+        # AsyncClient 生命周期内复用连接池；http2=True 打开 HTTP/2 帧编解码与多路复用路径。
+        async with httpx.AsyncClient(
+            http2=True,
+            verify=settings.probe_verify_tls,
+            timeout=timeout,
+            follow_redirects=False,
+        ) as client:
+            for path in paths:
+                url = f"{base}{path}"
+                try:
+                    # GET: SBI 为 REST 语义；GET 对只读列表/资源模板仍可能返回 401/403/404，足以做鉴权面分级。
+                    resp = await client.get(url, headers=headers)
+                    # http_version: httpx 在响应上暴露协商到的应用层版本字符串，如 "HTTP/2" 或 "HTTP/1.1"。
+                    hver = getattr(resp, "http_version", None) or "unknown"
+                    out["paths"][path] = {
+                        "status": resp.status_code,
+                        "http_version": hver,
+                        "www_authenticate": (resp.headers.get("www-authenticate") or "")[:200],
+                    }
+                except httpx.HTTPError as exc:
+                    out["paths"][path] = {"status": None, "http_version": None, "error": str(exc)[:260]}
+    except Exception as exc:  # noqa: BLE001 — TLS 握手失败、连接重置等写入顶层，避免整段探测无声崩溃
+        out["fatal"] = str(exc)[:400]
+    return out
 
 
 def get_last_run() -> dict[str, Any] | None:
@@ -135,12 +297,25 @@ def _resolve_dns(host: str) -> tuple[bool, list[str], str | None]:
 
 
 async def _https_head(host: str) -> tuple[bool | None, int | None, float | None, str | None]:
+    """
+    对根路径执行 HTTPS HEAD；AsyncClient 强制 http2=True 以便与 SBI 侧 ALPN=h2 行为对齐。
+
+    - HEAD: 减少下行 body；若服务端拒绝 HEAD 可能返回 405，仍视为 TLS+HTTP 栈存活。
+    - http2=True: 启用 HTTP/2 协商路径；失败时由 httpx 抛错或退回底层实现记录于 tls_error。
+    """
     url = f"https://{host}/"
     verify = settings.probe_verify_tls
     timeout = httpx.Timeout(settings.probe_timeout_sec, connect=min(3.0, settings.probe_timeout_sec))
     started = time.perf_counter()
     try:
-        async with httpx.AsyncClient(timeout=timeout, verify=verify, follow_redirects=False) as client:
+        # limits: 限制连接池并发，避免在批量探测目标时 httpx 默认池过大占用文件描述符。
+        async with httpx.AsyncClient(
+            timeout=timeout,
+            verify=verify,
+            follow_redirects=False,
+            http2=True,
+            limits=httpx.Limits(max_connections=8, max_keepalive_connections=4),
+        ) as client:
             resp = await client.head(url)
             elapsed = (time.perf_counter() - started) * 1000.0
             # Any HTTP status means TLS + server spoke HTTP (405/404/401 still "reachable").
@@ -447,6 +622,10 @@ async def _probe_one(host: str, original: str, sem: asyncio.Semaphore) -> ProbeT
 
         res.tcp_banners = await _tcp_banner_grab(host, open_tcp)
 
+        # SCTP 与 TCP 并行无关：在 to_thread 中执行 Scapy sr1，避免阻塞 asyncio 事件循环。
+        sctp_timeout = min(2.5, settings.probe_timeout_sec)
+        res.sctp_probe_findings = await asyncio.to_thread(_sctp_probe_all_ports_sync, host, SCTP_PROBE_PORTS, sctp_timeout)
+
         https_ok, status, lat, tls_err = await _https_head(host)
         res.https_ok = https_ok
         res.https_status = status
@@ -454,6 +633,16 @@ async def _probe_one(host: str, original: str, sem: asyncio.Semaphore) -> ProbeT
         res.tls_error = tls_err
         if 443 in open_tcp:
             res.tls_subject = await asyncio.to_thread(_fetch_tls_subject, host)
+
+        # 仅在 HTTPS 可达或已观测到 443/tcp 开放时触发 SBI 路径探测，减少对纯内网非 TLS 目标的无效 TLS 握手风暴。
+        if https_ok is True or (443 in open_tcp):
+            res.sbi_unauth_probe = await _probe_sbi_http2_unauth(host)
+        else:
+            res.sbi_unauth_probe = {"skipped": "no_https_and_no_tcp443", "https_ok": https_ok}
+
+        if any("INIT_reply" in x for x in res.sctp_probe_findings):
+            res.service_hints = list(dict.fromkeys([*res.service_hints, "sctp-ngap-init-reply"]))
+
         return res
 
 
@@ -490,6 +679,10 @@ async def run_probe(req: ProbeRunRequest) -> ProbeRunResponse:
         "tcp_banner_ports": sum(len(r.tcp_banners or {}) for r in results),
         "udp_spike_reply_lines": sum(
             sum(1 for line in (r.udp_spike_findings or []) if ":REPLY " in line) for r in results
+        ),
+        "sctp_init_replies": sum(1 for r in results if any("INIT_reply" in x for x in (r.sctp_probe_findings or []))),
+        "sbi_paths_probed": sum(
+            1 for r in results if isinstance(r.sbi_unauth_probe, dict) and r.sbi_unauth_probe.get("paths")
         ),
     }
 

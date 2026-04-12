@@ -47,5 +47,5 @@ class ReActAgentDecision(BaseModel):
     """ReAct 单步：思考 + 工具选择 + 输入。"""
 
     thought: str = ""
-    action: Literal["probe", "graph_rag", "synthesize", "finish"] = "finish"
+    action: Literal["probe", "graph_rag", "synthesize", "execute_verify", "finish"] = "finish"
     action_input: dict[str, str] = Field(default_factory=dict)

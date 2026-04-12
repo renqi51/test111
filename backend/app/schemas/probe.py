@@ -1,3 +1,5 @@
+from typing import Any
+
 from pydantic import BaseModel, Field
 
 
@@ -35,6 +37,14 @@ class ProbeTargetResult(BaseModel):
     udp_spike_findings: list[str] = Field(
         default_factory=list,
         description="各 UDP spike（含畸形版本 IKE、截断 GTP-U 等）的响应摘要或 silent_drop 标记",
+    )
+    sctp_probe_findings: list[str] = Field(
+        default_factory=list,
+        description="SCTP INIT（如 38412 NGAP）探测回显摘要；无 Scapy/权限时记录不可用原因",
+    )
+    sbi_unauth_probe: dict[str, Any] = Field(
+        default_factory=dict,
+        description="HTTP/2 优先的 SBI 路径未授权 GET 结果：各路径状态码、协商版本，用于越权面研判",
     )
 
 

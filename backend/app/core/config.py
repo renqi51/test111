@@ -151,5 +151,9 @@ class Settings(BaseSettings):
     # Outside-in exposure: max hosts materialized from all CIDR inputs per analyze/generate call.
     exposure_max_cidr_expand_hosts: int = 512
 
+    # exploit_sandbox_service: subprocess wall-clock 与输出截断（防止失控长任务与大 stdout）
+    exploit_sandbox_timeout_sec: float = 15.0
+    exploit_sandbox_max_output_chars: int = 8000
+
 
 settings = Settings()
