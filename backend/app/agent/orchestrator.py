@@ -80,6 +80,11 @@ def _react_system_prompt() -> str:
         "4) Trigger — synthesize 成功后，下一轮必须 action=execute_verify："
         "action_input.command 填一条完整 shell（须含字面目标 IP 以通过 CIDR 白名单，例如 nmap -sU -p500 192.0.2.1）；"
         "可选 action_input.title 描述验证点。\n"
+        "4b) ThreatVector 载荷模板 — 当 observations 中 kind=graph_rag 附带 threat_vectors_verbatim，"
+        "且其中 payload_template 含占位符（如 {TARGET_IP}、{LEGAL_TOKEN}、{INTERNAL_TOKEN}）时："
+        "你必须先从该 JSON 原样复制 payload_template 字符串，再结合 probe 得到的真实目标 IP/端口等事实，"
+        "使用 Python 式字符串替换（例如 template.replace('{TARGET_IP}', probe_ip) 或 str.format 的等价心智）"
+        "仅替换占位符；除占位符外不得改动引号、反斜杠、换行或 curl 参数结构，然后再提交沙箱执行。\n"
         "5) finish — 仅当 observations 中已存在 kind=sandbox_execute（沙箱真实回显）后，才允许 action=finish；"
         "最终结论必须基于沙箱 stdout/stderr，不得编造未执行命令的结果。\n\n"
         "action 枚举:\n"
@@ -235,7 +240,12 @@ async def run_agent(
                 status = "error"
             else:
                 out_payload = await get_graph_rag_query_service().ask(question=q, top_k=settings.graph_rag_top_k)
-                observations.append({"kind": "graph_rag", "question": q, "answer": out_payload})
+                obs_gr: dict[str, Any] = {"kind": "graph_rag", "question": q, "answer": out_payload}
+                if isinstance(out_payload, dict):
+                    tvs = out_payload.get("threat_vectors_verbatim")
+                    if tvs:
+                        obs_gr["threat_vectors_verbatim"] = tvs
+                observations.append(obs_gr)
         elif decision.action == "synthesize":
             pb_schema = json.dumps(PentestPlaybookResponse.model_json_schema(), ensure_ascii=False)
             syn_user = (

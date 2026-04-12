@@ -82,6 +82,30 @@ class GraphRepositoryBase(ABC):
         """GraphRAG 问答用：默认无子图（Neo4j / File 子类覆盖）。"""
         return {"nodes": [], "edges": []}
 
+    def fetch_threat_vectors_for_entity_ids(self, entity_ids: list[str]) -> list[dict[str, Any]]:
+        """子图 seed 实体关联的静态 ThreatVector（Neo4j 覆盖；文件后端无此数据）。"""
+        return []
+
+    def ingest_static_threat_playbooks(
+        self,
+        rows: list[dict[str, Any]],
+        *,
+        dry_run: bool = False,
+    ) -> dict[str, Any]:
+        """
+        将静态剧本 MERGE 到图数据库（仅 Neo4j 实现）。
+
+        文件后端返回 skipped，不抛异常，便于脚本统一调用。
+        """
+        return {
+            "backend": type(self).__name__,
+            "rows": len(rows),
+            "linked_edges": 0,
+            "skipped": True,
+            "dry_run": dry_run,
+            "message": "ingest_static_threat_playbooks is only executed on Neo4jGraphRepository",
+        }
+
     def save_staging_graph(self, run_id: str, payload: dict[str, Any]) -> None:
         trace_service.save_staging_graph(run_id, payload)
 
@@ -431,6 +455,111 @@ class Neo4jGraphRepository(GraphRepositoryBase):
                 )
 
         return {"nodes": nodes, "edges": edges}
+
+    def fetch_threat_vectors_for_entity_ids(self, entity_ids: list[str]) -> list[dict[str, Any]]:
+        ids = [str(x).strip() for x in entity_ids if str(x).strip()]
+        if not ids:
+            return []
+        ids = list(dict.fromkeys(ids))[:500]
+        rows = list(
+            self._run(
+                "MATCH (n:Entity)-[:VULNERABLE_TO]->(t:ThreatVector) "
+                "WHERE n.id IN $ids "
+                "RETURN DISTINCT n.id AS entity_id, n.label AS entity_label, "
+                "t.threat_id AS threat_id, t.threat_name AS threat_name, "
+                "t.vulnerability_type AS vulnerability_type, t.description AS description, "
+                "t.payload_template AS payload_template ",
+                ids=ids,
+            )
+        )
+        return [dict(r) for r in rows]
+
+    def ingest_static_threat_playbooks(
+        self,
+        rows: list[dict[str, Any]],
+        *,
+        dry_run: bool = False,
+    ) -> dict[str, Any]:
+        """
+        将 ``ThreatVector`` 剧本确定性挂载到已有 ``Entity`` 节点（:Entity 为入库统一标签，type 存 NetworkFunction 等）。
+
+        - 使用 ``MERGE (tv:ThreatVector {threat_id})`` 幂等；不删除、不覆盖无关业务节点与 Milvus。
+        - 匹配策略：``n.type == target_node_type`` 且 ``label/id/en_identifier`` 对 ``target_node_name`` 做大小写无关子串匹配，
+          与业务侧 ``CONTAINS`` 需求对齐（本仓库无独立 ``:NetworkFunction`` 标签）。
+        """
+        stats: dict[str, Any] = {
+            "backend": "neo4j",
+            "rows": len(rows),
+            "linked_edges": 0,
+            "skipped_no_entity": 0,
+            "dry_run": dry_run,
+            "warnings": [],
+        }
+        with self._driver.session() as sess:
+            sess.run(
+                "CREATE CONSTRAINT threatvector_threat_id_unique IF NOT EXISTS "
+                "FOR (tv:ThreatVector) REQUIRE tv.threat_id IS UNIQUE"
+            )
+
+        match_cypher = (
+            "MATCH (n:Entity) "
+            "WHERE n.type = $node_type AND ("
+            "  toLower(coalesce(n.label, '')) CONTAINS $needle "
+            "  OR toLower(coalesce(n.id, '')) CONTAINS $needle "
+            "  OR toLower(coalesce(n.en_identifier, '')) CONTAINS $needle"
+            ") "
+            "RETURN DISTINCT n.id AS id"
+        )
+        link_cypher = (
+            "UNWIND $entity_ids AS eid "
+            "MATCH (x:Entity {id: eid}) "
+            "MERGE (tv:ThreatVector {threat_id: $threat_id}) "
+            "SET tv.threat_name = $threat_name, "
+            "    tv.vulnerability_type = $vulnerability_type, "
+            "    tv.description = $description, "
+            "    tv.payload_template = $payload_template, "
+            "    tv.source = $source "
+            "MERGE (x)-[r:VULNERABLE_TO]->(tv)"
+        )
+
+        for row in rows:
+            node_type = str(row.get("target_node_type", "")).strip()
+            name_needle = str(row.get("target_node_name", "")).strip().lower()
+            threat_id = str(row.get("threat_name", "")).strip()
+            if not node_type or not name_needle or not threat_id:
+                stats["warnings"].append(f"invalid_row_skip:{row}")
+                stats["skipped_no_entity"] += 1
+                continue
+            matches = list(
+                self._run(
+                    match_cypher,
+                    node_type=node_type,
+                    needle=name_needle,
+                )
+            )
+            eids = [str(m["id"]) for m in matches if m.get("id")]
+            if not eids:
+                stats["skipped_no_entity"] += 1
+                stats["warnings"].append(f"no_entity_match:{threat_id}:{node_type}:{name_needle}")
+                continue
+            if dry_run:
+                stats["linked_edges"] += len(eids)
+                continue
+            list(
+                self._run(
+                    link_cypher,
+                    entity_ids=eids,
+                    threat_id=threat_id,
+                    threat_name=str(row.get("threat_name", "")).strip(),
+                    vulnerability_type=str(row.get("vulnerability_type", "")).strip(),
+                    description=str(row.get("description", "")).strip(),
+                    payload_template=str(row.get("payload_template", "")),
+                    source="static_playbook_json",
+                )
+            )
+            stats["linked_edges"] += len(eids)
+
+        return stats
 
     def save_staging_graph(self, run_id: str, payload: dict[str, Any]) -> None:
         # Keep file copy for export/debug compatibility.

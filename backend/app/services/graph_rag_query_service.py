@@ -33,6 +33,17 @@ def _neo4j_edge_line(e: dict[str, Any]) -> str:
     tgt = e.get("target", "")
     itype = e.get("interaction", "")
     return f"关系: {src} --[{itype}]--> {tgt}"
+
+
+def _threat_vector_verbatim_block(rows: list[dict[str, Any]]) -> str:
+    """将 ThreatVector 行序列化为 JSONL 块，保证 payload_template 转义由 json.dumps 统一处理。"""
+    if not rows:
+        return ""
+    return (
+        "\n\n=== THREAT_VECTOR_VERBATIM_JSON（Neo4j 原子字段快照；payload_template 禁止增删改标点）===\n"
+        + "\n".join(json.dumps(tv, ensure_ascii=False) for tv in rows)
+        + "\n"
+    )
 _MILVUS_CLIENT_PATCHED = False
 
 
@@ -193,24 +204,27 @@ class GraphRAGQueryService:
         neo4j_edges = 0
         neo4j_ok = False
         chunks_only = False
+        threat_vectors_verbatim: list[dict[str, Any]] = []
+        last_sub: dict[str, Any] | None = None
+        last_repo: Any = None
 
         if settings.graph_rag_neo4j_subgraph_enabled:
             try:
-                repo = get_graph_repository()
-                sub = repo.subgraph_for_graph_rag_question(
+                last_repo = get_graph_repository()
+                last_sub = last_repo.subgraph_for_graph_rag_question(
                     q,
                     seed_limit=settings.graph_rag_neo4j_seed_limit,
                     max_edges=settings.graph_rag_neo4j_max_edges,
                 )
                 neo4j_ok = True
-                neo4j_nodes = len(sub.get("nodes", []))
-                neo4j_edges = len(sub.get("edges", []))
-                for n in sub.get("nodes", []):
+                neo4j_nodes = len(last_sub.get("nodes", []))
+                neo4j_edges = len(last_sub.get("edges", []))
+                for n in last_sub.get("nodes", []):
                     graph_ctx.append(_neo4j_node_line(n))
                     nid = str(n.get("id", "")).strip()
                     if nid:
                         citations.append(f"neo4j:entity:{nid}")
-                for e in sub.get("edges", []):
+                for e in last_sub.get("edges", []):
                     graph_ctx.append(_neo4j_edge_line(e))
                     s, t = str(e.get("source", "")), str(e.get("target", ""))
                     if s and t:
@@ -223,6 +237,20 @@ class GraphRAGQueryService:
                 )
             except Exception:  # noqa: BLE001
                 logger.exception("[GraphRAG] subgraph_for_graph_rag_question failed; falling back to Milvus-only graph hints")
+
+        if neo4j_ok and last_sub is not None and last_repo is not None:
+            try:
+                # 子图 seed 上的 ThreatVector 为静态剧本挂载结果；payload_template 必须原样进入下游，不经 LLM 改写。
+                eids = [str(n.get("id", "")).strip() for n in last_sub.get("nodes", []) if n.get("id")]
+                threat_vectors_verbatim = last_repo.fetch_threat_vectors_for_entity_ids(eids)
+                if threat_vectors_verbatim:
+                    graph_ctx.append(
+                        "[ThreatVector] 已挂载 "
+                        f"{len(threat_vectors_verbatim)} 条静态剧本；"
+                        "完整 payload_template 见 user_prompt 末尾 THREAT_VECTOR_VERBATIM_JSON 区块（与 Neo4j 逐字节一致）。"
+                    )
+            except Exception:  # noqa: BLE001
+                logger.exception("[GraphRAG] fetch_threat_vectors_for_entity_ids failed")
 
         if neo4j_ok and settings.graph_rag_milvus_chunks_only_when_neo4j_context:
             chunks_only = True
@@ -295,6 +323,7 @@ class GraphRAGQueryService:
             "graph_ctx": graph_ctx,
             "chunk_ctx": chunk_ctx,
             "citations": citations,
+            "threat_vectors_verbatim": threat_vectors_verbatim,
         }
 
     async def ask(self, *, question: str, top_k: int | None = None) -> dict[str, Any]:
@@ -309,10 +338,15 @@ class GraphRAGQueryService:
         graph_ctx = list(prep["graph_ctx"])
         chunk_ctx = list(prep["chunk_ctx"])
         citations = list(prep["citations"])
+        threat_vectors_verbatim = list(prep.get("threat_vectors_verbatim") or [])
+
+        tv_block = _threat_vector_verbatim_block(threat_vectors_verbatim)
 
         system_prompt = (
             "你是 GraphRAG 问答助手。"
             "必须严格基于提供的“图谱上下文”（可含实时图数据库子图）和“原文上下文”（向量库召回的文档切块）回答，不得编造。"
+            "若存在 THREAT_VECTOR_VERBATIM_JSON 段，其中的 payload_template 必须与图库存储逐字符一致；"
+            "需要在回答中引用载荷时，应整段从该 JSON 的 payload_template 字段复制，不得自行调整引号、反斜杠或换行。"
             "输出 JSON，字段为 answer/confidence/citations/notes。"
         )
         user_prompt = (
@@ -320,8 +354,9 @@ class GraphRAGQueryService:
             f"核心实体与关系图谱上下文（来自当前图存储子图 + 可选向量召回）:\n"
             + ("\n".join(f"- {x}" for x in graph_ctx) if graph_ctx else "- (none)")
             + "\n\n"
-            f"详细参考原文上下文:\n" + ("\n".join(f"- {x}" for x in chunk_ctx) if chunk_ctx else "- (none)") + "\n\n"
-            "要求:\n"
+            f"详细参考原文上下文:\n" + ("\n".join(f"- {x}" for x in chunk_ctx) if chunk_ctx else "- (none)")
+            + tv_block
+            + "\n要求:\n"
             "1) 仅基于上面上下文作答；\n"
             "2) 如果证据不足，请明确说明；\n"
             "3) citations 优先引用 source_file#chunk-index。\n"
@@ -345,10 +380,13 @@ class GraphRAGQueryService:
                 "confidence": 0.0,
                 "citations": citations,
                 "notes": [f"llm answer failed: {str(exc)[:180]}"],
+                "threat_vectors_verbatim": threat_vectors_verbatim,
             }
 
         logger.info("[GraphRAG] query done answer_chars=%s", len(payload.answer or ""))
-        return payload.model_dump()
+        out = payload.model_dump()
+        out["threat_vectors_verbatim"] = threat_vectors_verbatim
+        return out
 
     async def synthesize_exposure_attack_path(
         self,
@@ -381,10 +419,12 @@ class GraphRAGQueryService:
         graph_ctx = list(prep["graph_ctx"])
         chunk_ctx = list(prep["chunk_ctx"])
         citations = list(prep["citations"])
+        threat_rows = list(prep.get("threat_vectors_verbatim") or [])
         schema_json = json.dumps(AttackPathSynthesisBatch.model_json_schema(), ensure_ascii=False)
         system_prompt = (
             "你是面向 5G 核心网暴露面的攻击性 GraphRAG 合成引擎，输出仅用于授权红队演练。"
             "必须严格基于图谱上下文与原文上下文输出 JSON，匹配 Schema。"
+            "若 user_prompt 含 THREAT_VECTOR_VERBATIM_JSON 段，其中 payload_template 为图库原文，引用时不得改写标点或转义。"
             "techniques 每条必须包含可照抄的工具级指令或抓包/发包点位，例如："
             "「nmap -sU -p500,4500 --script ike-version <target>」、"
             "「scapy 发送 IKE_SA_INIT 且将 major 版本改为 0x3，观察是否返回 INVALID_MAJOR_VERSION NOTIFY」、"
@@ -400,6 +440,7 @@ class GraphRAGQueryService:
             + ("\n".join(f"- {x}" for x in graph_ctx) if graph_ctx else "- (none)")
             + "\n\n原文上下文:\n"
             + ("\n".join(f"- {x}" for x in chunk_ctx) if chunk_ctx else "- (none)")
+            + _threat_vector_verbatim_block(threat_rows)
             + f"\n\ncitations 建议引用: {citations}\n"
             f"Schema:\n{schema_json}\n"
             "输出 JSON：顶层为 paths（通常 1 条，对应本候选）与 analyst_notes。"
@@ -446,16 +487,19 @@ class GraphRAGQueryService:
         graph_ctx = list(prep["graph_ctx"])
         chunk_ctx = list(prep["chunk_ctx"])
         citations = list(prep["citations"])
+        threat_rows = list(prep.get("threat_vectors_verbatim") or [])
         schema_json = json.dumps(ExposureAssessmentSynthesis.model_json_schema(), ensure_ascii=False)
         system_prompt = (
             "你是电信暴露面风险评估助手。仅依据上下文证据输出 JSON，匹配 Schema。"
             "attack_points 描述值得关注的断点；validation_tasks 为授权环境下的检查步骤。"
+            "若含 THREAT_VECTOR_VERBATIM_JSON，其中的 payload_template 为图库原文，不得改写。"
         )
         user_prompt = (
             f"{q}\n\n图谱:\n"
             + ("\n".join(f"- {x}" for x in graph_ctx) if graph_ctx else "- (none)")
             + "\n\n原文:\n"
             + ("\n".join(f"- {x}" for x in chunk_ctx) if chunk_ctx else "- (none)")
+            + _threat_vector_verbatim_block(threat_rows)
             + f"\n\nevidence_refs 优先: {citations}\nSchema:\n{schema_json}\n"
         )
         try:
@@ -484,10 +528,12 @@ class GraphRAGQueryService:
         graph_ctx = list(prep["graph_ctx"])
         chunk_ctx = list(prep["chunk_ctx"])
         citations = list(prep["citations"])
+        threat_vectors_verbatim = list(prep.get("threat_vectors_verbatim") or [])
 
         stream_system_prompt = (
             "你是 GraphRAG 问答助手。"
             "你必须仅基于提供的图谱上下文和原文上下文回答，避免编造。"
+            "若存在 THREAT_VECTOR_VERBATIM_JSON 段，引用 payload_template 时必须逐字符与 JSON 中一致。"
             "请直接输出自然语言答案正文，不要输出 JSON。"
         )
         stream_user_prompt = (
@@ -497,8 +543,8 @@ class GraphRAGQueryService:
             + "\n\n"
             f"详细参考原文上下文:\n"
             + ("\n".join(f"- {x}" for x in chunk_ctx) if chunk_ctx else "- (none)")
-            + "\n\n"
-            "要求:\n"
+            + _threat_vector_verbatim_block(threat_vectors_verbatim)
+            + "\n要求:\n"
             "1) 只基于上下文回答；\n"
             "2) 若证据不足，请明确说明。\n"
         )
@@ -528,7 +574,9 @@ class GraphRAGQueryService:
             citations=citations,
             notes=[] if citations else ["limited evidence context"],
         )
-        yield {"type": "final", "payload": payload.model_dump()}
+        final = payload.model_dump()
+        final["threat_vectors_verbatim"] = threat_vectors_verbatim
+        yield {"type": "final", "payload": final}
 
 
 _graph_rag_query_service: GraphRAGQueryService | None = None

