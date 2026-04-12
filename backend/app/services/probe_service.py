@@ -61,11 +61,10 @@ def _sr1_dispatch(pkt: Any, timeout: float, *, verbose: int = 0) -> Any:
 
 def _resolve_target_ip_for_l3(host: str) -> tuple[str | None, str]:
     """
-    将 FQDN 解析为用于 L3（IP/IPv6）封装的第一个可用地址。
+    将 FQDN 解析为用于 L3（IP/IPv6）封装的第一个可用地址（同步版，仅保留给单元测试打桩或遗留同步调用）。
 
-    返回:
-    - (ip_string, "ipv4"|"ipv6"): 优先 IPv4，便于与多数实验网 AMF 监听栈对齐；若无 v4 再退回 v6。
-    - (None, "ipv4"): 解析失败时的占位，调用方应跳过 Scapy 发包。
+    生产路径请使用 ``_resolve_target_ip_async``：在协程里直接 ``socket.getaddrinfo`` 会阻塞事件循环，
+    SCTP 探测若未来误在主协程调用同步解析将导致整服务卡死。
     """
     # 使用默认 getaddrinfo（不传 type），避免 SOCK_RAW 在 Windows 等平台对解析路径不兼容。
     try:
@@ -81,25 +80,39 @@ def _resolve_target_ip_for_l3(host: str) -> tuple[str | None, str]:
     return None, "ipv4"
 
 
-def _sctp_init_probe_sync(host: str, dport: int, timeout: float) -> list[str]:
+async def _resolve_target_ip_async(host: str) -> tuple[str | None, str]:
     """
-    在单端口上发送 SCTP INIT（Scapy），并记录 INIT-ACK/静默丢弃/异常。
+    异步 DNS：通过 ``asyncio`` 事件循环的 ``getaddrinfo`` 完成解析，避免阻塞主 loop。
 
-    SCTP INIT 语义简述（RFC 4960）:
-    - INIT 分片用于发起偶联：携带 initiate_tag、窗口、流数等；对端正常应回 INIT-ACK 或 ABORT。
-    - 本函数不关心业务层 NGAP，只利用传输层握手暴露“SCTP 栈是否对公网源开放响应”。
+    为什么 SCTP 场景必须走此路径：
+    - 旧实现把 ``socket.getaddrinfo`` 放在 ``to_thread`` 里虽能缓解，但仍占用线程池且在高并发探测下
+      会与大量 ``to_thread`` 任务争抢 worker；更关键的是一旦代码路径回归主协程调用同步解析，
+      将直接卡死事件循环。统一 ``await loop.getaddrinfo`` 与 HTTPS/SBI 等异步 I/O 模型一致。
+    """
+    loop = asyncio.get_running_loop()
+    try:
+        infos = await loop.getaddrinfo(host, None, family=socket.AF_UNSPEC, type=0, proto=0, flags=0)
+    except OSError:
+        return None, "ipv4"
+    for fam, _, _, _, sockaddr in infos:
+        if fam == socket.AF_INET and sockaddr:
+            return str(sockaddr[0]), "ipv4"
+    for fam, _, _, _, sockaddr in infos:
+        if fam == socket.AF_INET6 and sockaddr:
+            return str(sockaddr[0]), "ipv6"
+    return None, "ipv4"
 
-    参数:
-    - host: 目标主机名（已通过策略白名单）；内部解析为 IP 写入 IP()/IPv6() 的 dst。
-    - dport: SCTP 目的端口；38412 对应 NGAP 监听端口场景。
-    - timeout: sr1 等待时间（秒）；与全局 probe 超时对齐，防止拖垮事件循环（调用方应放在 to_thread 中）。
+
+def _sctp_scapy_init_on_resolved_ip(dst_ip: str, fam: str, dport: int, timeout: float) -> list[str]:
+    """
+    在已解析的 IP 上发送 SCTP INIT（Scapy），并记录 INIT-ACK/静默丢弃/异常。
+
+    与 ``_sctp_init_probe_sync`` 的区别：本函数**不做 DNS**，仅执行 Scapy 阻塞 I/O；
+    调用方应先在协程里 ``await _resolve_target_ip_async``，再 ``asyncio.to_thread`` 进入此函数，
+    从而把「可异步的解析」与「必须同步的 raw 发包」清晰分层。
     """
     if not _SCAPY_AVAILABLE:
         return [f"sctp:{dport}:SCAPY_NOT_INSTALLED pip_install_scapy"]
-
-    dst_ip, fam = _resolve_target_ip_for_l3(host)
-    if not dst_ip:
-        return [f"sctp:{dport}:NO_IP_FOR_L3 host_resolve_failed"]
 
     sport = random.randint(30000, 60000)
     try:
@@ -128,32 +141,110 @@ def _sctp_init_probe_sync(host: str, dport: int, timeout: float) -> list[str]:
         return [f"sctp:{dport}:INIT_send_failed sport={sport} err={str(exc)[:220]}"]
 
 
-def _sctp_probe_all_ports_sync(host: str, ports: tuple[int, ...], timeout: float) -> list[str]:
-    """对多个 SCTP 端口顺序执行 INIT 探测；顺序扫描避免同一主机上突发 Raw 包风暴。"""
+def _sctp_init_probe_sync(host: str, dport: int, timeout: float) -> list[str]:
+    """
+    同步 SCTP 单端口探测（含同步 DNS）：仅用于单测打桩或工具式调用；生产路径请用 ``_sctp_probe_all_ports_async``。
+    """
+    if not _SCAPY_AVAILABLE:
+        return [f"sctp:{dport}:SCAPY_NOT_INSTALLED pip_install_scapy"]
+    dst_ip, fam = _resolve_target_ip_for_l3(host)
+    if not dst_ip:
+        return [f"sctp:{dport}:NO_IP_FOR_L3 host_resolve_failed"]
+    return _sctp_scapy_init_on_resolved_ip(dst_ip, fam, dport, timeout)
+
+
+async def _sctp_probe_all_ports_async(host: str, ports: tuple[int, ...], timeout: float) -> list[str]:
+    """
+    对多个 SCTP 端口顺序执行 INIT：先 ``await`` 异步 DNS，再逐端口 ``to_thread`` 跑 Scapy。
+
+    为什么必须先异步解析再 to_thread：
+    - DNS 解析属于网络就绪等待，应交给事件循环调度；若整段包进单个线程函数，线程池易被
+      慢解析占满，且违背「解析异步化、仅 raw 发包进线程」的分层原则。
+    """
+    if not _SCAPY_AVAILABLE:
+        return [f"sctp:{p}:SCAPY_NOT_INSTALLED pip_install_scapy" for p in ports]
+    dst_ip, fam = await _resolve_target_ip_async(host)
+    if not dst_ip:
+        return [f"sctp:{p}:NO_IP_FOR_L3 host_resolve_failed" for p in ports]
     out: list[str] = []
     for p in ports:
-        out.extend(_sctp_init_probe_sync(host, p, timeout))
+        lines = await asyncio.to_thread(_sctp_scapy_init_on_resolved_ip, dst_ip, fam, p, timeout)
+        out.extend(lines)
     return out
+
+
+def _iter_exception_chain(root: BaseException) -> list[BaseException]:
+    """遍历 __cause__ / __context__ 链，供 TLS/mTLS 语义判断。"""
+    chain: list[BaseException] = []
+    seen: set[int] = set()
+    stack: list[BaseException] = [root]
+    while stack:
+        e = stack.pop()
+        if id(e) in seen:
+            continue
+        seen.add(id(e))
+        chain.append(e)
+        if e.__cause__ is not None and id(e.__cause__) not in seen:
+            stack.append(e.__cause__)
+        if e.__context__ is not None and e.__context__ is not e.__cause__ and id(e.__context__) not in seen:
+            stack.append(e.__context__)
+    return chain
+
+
+def _tls_handshake_suggests_mtls_enforced(exc: BaseException) -> bool:
+    """
+    判断异常是否更像「服务端强制 mTLS（要求客户端证书）」而非普通超时。
+
+    为什么需要单独分支：
+    - 现网 5G SBI 大量在 TLS 层要求双向证书；httpx 无客户端证书时往往在握手阶段失败，
+      若简单映射为 timeout/ConnectError，红队观测会误判为「网络不可达」而忽略安全控制强度。
+    - 启发式刻意**收紧**：不再把泛化的 ``handshake failure`` / ``tlsv1 alert`` 一律标成 mTLS，
+      否则无 SNI、协议版本不匹配、中间盒 RST 等噪声会被误标为 ``mTLS_Enforced``，污染暴露面分级。
+    - 仅当异常链上出现「证书/CA/对端要求客户端证书」类关键词或等价 SSLError 子类型时才返回 True。
+    """
+    _mtls_needles = (
+        "alert certificate",
+        "certificate required",
+        "certificate_required",  # OpenSSL：TLSV1_ALERT_CERTIFICATE_REQUIRED
+        "alert unknown ca",
+        "unknown ca",
+        "bad certificate",
+        "cert chain",
+        "unable to get local issuer certificate",
+    )
+    for cur in _iter_exception_chain(exc):
+        low = str(cur).lower()
+        if isinstance(cur, ssl.SSLError) and any(k in low for k in _mtls_needles):
+            return True
+        if any(k in low for k in _mtls_needles):
+            return True
+    return False
+
+
+def _sbi_path_error_payload(exc: BaseException) -> dict[str, Any]:
+    """将 httpx/下层 TLS 异常规整为 paths[path] 条目。"""
+    row: dict[str, Any] = {"status": None, "http_version": None, "error": str(exc)[:260]}
+    if _tls_handshake_suggests_mtls_enforced(exc):
+        row["mTLS_Enforced"] = True
+    return row
 
 
 async def _probe_sbi_http2_unauth(host: str) -> dict[str, Any]:
     """
-    使用 httpx 强制启用 HTTP/2 客户端栈，对典型 5G SBI 路径发起带伪造 Bearer 的 GET，用于越权/鉴权边界观测。
+    使用 httpx 强制启用 HTTP/2 客户端栈，对 NRF 发现类无状态接口发起 GET，用于越权/鉴权/mTLS 边界观测。
 
     设计要点:
     - http2=True: 要求底层尝试 TLS ALPN 协商 h2；若对端仅 http/1.1，httpx 会记录实际协商版本，便于区分“老栈”与“真 SBI”。
-    - Authorization: 使用结构上像 JWT 但签名无效的 Bearer，逼迫 NRF/UDM 等网元走完整 token 校验分支，
+    - 路径选用 ``Nnrf_NFDiscovery`` 的 ``GET /nnrf-disc/v1/nf-instances``（TS 29.510）：不依赖 SUPI/IMSI，
+      比硬编码 UDM 假 IMSI 更接近真实「服务发现」暴露面；若需 UDM 业务语义应在拿到合法标识后再测。
+    - Authorization: 使用结构上像 JWT 但签名无效的 Bearer，逼迫 API 网关走完整 token 校验分支，
       从而用 HTTP 状态码区分：401（未认证）、403（已认证无权限）、200（异常放行风险）等。
     - follow_redirects=False: 禁止跟随 302 到门户页，避免把登录页 HTML 误判为 API 成功响应。
     - verify: 与全局 probe 配置一致，防止实验室内错误信任非法 TLS 证书。
     """
     timeout = httpx.Timeout(settings.probe_timeout_sec, connect=min(3.0, settings.probe_timeout_sec))
-    # 常见 SBI 路径（3GPP TS 29.510 / 29.503 等）：使用占位 SUPI/IMSI 仅探测路由与鉴权层，不声称真实用户存在。
-    paths = (
-        "/nnrf-nfm/v1/nf-instances",
-        "/nudm-ueau/v1/imsi-460001234567890/security-information",
-    )
-    out: dict[str, Any] = {"paths": {}, "note": "unauth_bearer_probe_forbidden_bypass_check"}
+    paths = ("/nnrf-disc/v1/nf-instances",)
+    out: dict[str, Any] = {"paths": {}, "note": "nrf_discovery_nf_instances_http2_probe_no_supi"}
     headers = {
         # Bearer 令牌三段式外观 + 明显无效签名：触发 API 网关解析与验签，而非被当作缺失头直接 401。
         "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.e30.forced-invalid-sig",
@@ -182,9 +273,11 @@ async def _probe_sbi_http2_unauth(host: str) -> dict[str, Any]:
                         "www_authenticate": (resp.headers.get("www-authenticate") or "")[:200],
                     }
                 except httpx.HTTPError as exc:
-                    out["paths"][path] = {"status": None, "http_version": None, "error": str(exc)[:260]}
+                    out["paths"][path] = _sbi_path_error_payload(exc)
     except Exception as exc:  # noqa: BLE001 — TLS 握手失败、连接重置等写入顶层，避免整段探测无声崩溃
         out["fatal"] = str(exc)[:400]
+        if _tls_handshake_suggests_mtls_enforced(exc):
+            out["mTLS_Enforced"] = True
     return out
 
 
@@ -282,9 +375,17 @@ def _host_permitted(host: str) -> tuple[bool, str]:
     return False, "host_not_in_allowlist"
 
 
-def _resolve_dns(host: str) -> tuple[bool, list[str], str | None]:
+async def _resolve_dns_async(host: str) -> tuple[bool, list[str], str | None]:
+    """
+    异步 DNS：与 SCTP 侧一致，使用 ``loop.getaddrinfo`` 替代 ``socket.getaddrinfo``。
+
+    为什么主探测路径不能用同步 getaddrinfo（即便包在 to_thread 里）：
+    - 批量主机探测时，每个目标再起线程做解析会放大调度开销；统一异步解析可把 DNS 与 httpx I/O
+      纳入同一事件循环，避免线程池在「纯等待 DNS」场景下被无意义占满。
+    """
+    loop = asyncio.get_running_loop()
     try:
-        infos = socket.getaddrinfo(host, None, type=socket.SOCK_STREAM)
+        infos = await loop.getaddrinfo(host, None, type=socket.SOCK_STREAM, family=socket.AF_UNSPEC)
         addrs: list[str] = []
         for item in infos:
             sockaddr = item[4]
@@ -363,15 +464,18 @@ def _gtpu_truncated_spike() -> bytes:
     return struct.pack("!BBHI", 0x20, 1, 8, 0) + b"\x00\x00\x00\x00\x00\x00"
 
 
-def _udp_send_recv_once(host: str, port: int, payload: bytes, timeout: float) -> bytes | None:
-    try:
-        infos = socket.getaddrinfo(host, port, type=socket.SOCK_DGRAM, proto=socket.IPPROTO_UDP)
-    except OSError:
-        return None
-    for _fam, _type, _proto, _canon, sockaddr in infos:
+def _udp_send_recv_on_sockaddrs(fam_sockaddrs: list[tuple[int, tuple[Any, ...]]], payload: bytes, timeout: float) -> bytes | None:
+    """
+    在给定已解析的 UDP 套接字地址列表上尝试 send/recv（同步阻塞）。
+
+    为什么从 ``_udp_send_recv_once`` 拆出本函数：
+    - DNS 解析已上移到协程 ``await loop.getaddrinfo`` 后，线程内只应做短阻塞的 UDP I/O，
+      避免在 ``asyncio.to_thread`` 里再次调用 ``getaddrinfo`` 双重占线程且拉长临界区。
+    """
+    for fam, sockaddr in fam_sockaddrs:
         sock: socket.socket | None = None
         try:
-            sock = socket.socket(_fam, socket.SOCK_DGRAM)
+            sock = socket.socket(fam, socket.SOCK_DGRAM)
             sock.settimeout(timeout)
             sock.sendto(payload, sockaddr[:2])
             data, _ = sock.recvfrom(4096)
@@ -389,6 +493,77 @@ def _udp_send_recv_once(host: str, port: int, payload: bytes, timeout: float) ->
     return None
 
 
+async def _resolve_udp_sockaddrs_async(host: str, port: int) -> list[tuple[int, tuple[Any, ...]]]:
+    """
+    异步解析 UDP 目的地址元组列表（与 SCTP/DNS 主路径一致走 ``loop.getaddrinfo``）。
+
+    为什么 UDP spike 也必须异步解析：
+    - ``_scan_udp_ports`` 在协程里 ``gather`` 多个端口任务；若每个任务在线程里 ``getaddrinfo``，
+      高并发目标扫描时仍会把默认线程池打满；解析提到此处可与 TCP/HTTPS 调度合并。
+    """
+    loop = asyncio.get_running_loop()
+    try:
+        infos = await loop.getaddrinfo(
+            host,
+            port,
+            family=socket.AF_UNSPEC,
+            type=socket.SOCK_DGRAM,
+            proto=socket.IPPROTO_UDP,
+        )
+    except OSError:
+        return []
+    out: list[tuple[int, tuple[Any, ...]]] = []
+    seen: set[tuple[Any, ...]] = set()
+    for fam, _typ, _proto, _canon, sockaddr in infos:
+        if not sockaddr:
+            continue
+        if sockaddr in seen:
+            continue
+        seen.add(sockaddr)
+        out.append((fam, sockaddr))
+    return out
+
+
+def _udp_resolve_sync(host: str, port: int) -> list[tuple[int, tuple[Any, ...]]]:
+    """同步解析 UDP 地址列表（单测打桩或工具调用）；生产路径请用 ``_resolve_udp_sockaddrs_async``。"""
+    try:
+        infos = socket.getaddrinfo(
+            host,
+            port,
+            family=socket.AF_UNSPEC,
+            type=socket.SOCK_DGRAM,
+            proto=socket.IPPROTO_UDP,
+        )
+    except OSError:
+        return []
+    out: list[tuple[int, tuple[Any, ...]]] = []
+    seen: set[tuple[Any, ...]] = set()
+    for fam, _typ, _proto, _canon, sockaddr in infos:
+        if not sockaddr:
+            continue
+        if sockaddr in seen:
+            continue
+        seen.add(sockaddr)
+        out.append((fam, sockaddr))
+    return out
+
+
+def _udp_send_recv_once(host: str, port: int, payload: bytes, timeout: float) -> bytes | None:
+    """同步路径：解析 + 发送（供单测 monkeypatch 或遗留调用）。"""
+    addrs = _udp_resolve_sync(host, port)
+    if not addrs:
+        return None
+    return _udp_send_recv_on_sockaddrs(addrs, payload, timeout)
+
+
+async def _udp_send_recv_once_async(host: str, port: int, payload: bytes, timeout: float) -> bytes | None:
+    """生产路径：先 await DNS，再线程内跑 UDP I/O，避免阻塞事件循环。"""
+    addrs = await _resolve_udp_sockaddrs_async(host, port)
+    if not addrs:
+        return None
+    return await asyncio.to_thread(_udp_send_recv_on_sockaddrs, addrs, payload, timeout)
+
+
 def _parse_ike_response_hint(data: bytes) -> str:
     if len(data) < 28:
         return f"short_packet_len={len(data)}"
@@ -404,7 +579,7 @@ def _parse_ike_response_hint(data: bytes) -> str:
 
 
 def _udp_spikes_for_port(host: str, port: int, timeout: float) -> tuple[bool, list[str]]:
-    """Run multiple lightweight spikes per UDP port; record reply vs silent drop."""
+    """同步 UDP spike 矩阵（单测默认打桩 ``_udp_send_recv_once``）；生产请用 ``_udp_spikes_for_port_async``。"""
     findings: list[str] = []
     any_reply = False
     if port in (500, 4500):
@@ -423,6 +598,36 @@ def _udp_spikes_for_port(host: str, port: int, timeout: float) -> tuple[bool, li
         probes = [("raw_zero2", b"\x00\x00")]
     for name, pkt in probes:
         data = _udp_send_recv_once(host, port, pkt, timeout)
+        if data:
+            any_reply = True
+            hx = data[:48].hex()
+            hint = _parse_ike_response_hint(data) if port in (500, 4500) else f"len={len(data)}"
+            findings.append(f"udp:{port}:{name}:REPLY bytes={len(data)} hex48={hx} {hint}")
+        else:
+            findings.append(f"udp:{port}:{name}:SILENT_DROP_OR_TIMEOUT")
+    return any_reply, findings
+
+
+async def _udp_spikes_for_port_async(host: str, port: int, timeout: float) -> tuple[bool, list[str]]:
+    """异步 DNS + 线程 UDP I/O 的 spike 矩阵；与 ``_scan_udp_ports`` 主路径对接。"""
+    findings: list[str] = []
+    any_reply = False
+    if port in (500, 4500):
+        probes: list[tuple[str, bytes]] = [
+            ("ikev2_sa_init_v2_0", _ike_sa_init_packet(2, 0)),
+            ("ike_invalid_major_3_1", _ike_sa_init_packet(3, 1)),
+            ("ike_invalid_major_15_15", _ike_sa_init_packet(15, 15)),
+        ]
+    elif port == 2152:
+        probes = [
+            ("gtpv1_echo_std", _gtpu_echo_spike()),
+            ("gtpv1_bad_msgtype_ff", struct.pack("!BBHI", 0x20, 0xFF, 8, 0) + b"\x00\x00\x00\x00"),
+            ("gtp_trunc_length", _gtpu_truncated_spike()),
+        ]
+    else:
+        probes = [("raw_zero2", b"\x00\x00")]
+    for name, pkt in probes:
+        data = await _udp_send_recv_once_async(host, port, pkt, timeout)
         if data:
             any_reply = True
             hx = data[:48].hex()
@@ -532,7 +737,7 @@ async def _scan_udp_ports(host: str) -> tuple[list[int], list[str]]:
     findings_acc: list[str] = []
 
     async def _check(port: int) -> tuple[int | None, list[str]]:
-        ok, lines = await asyncio.to_thread(_udp_spikes_for_port, host, port, timeout)
+        ok, lines = await _udp_spikes_for_port_async(host, port, timeout)
         return (port if ok else None), lines
 
     checked = await asyncio.gather(*[_check(p) for p in UDP_PROBE_PORTS])
@@ -600,7 +805,7 @@ async def _probe_one(host: str, original: str, sem: asyncio.Semaphore) -> ProbeT
         )
 
     async with sem:
-        dns_ok, addrs, dns_err = await asyncio.to_thread(_resolve_dns, host)
+        dns_ok, addrs, dns_err = await _resolve_dns_async(host)
         res = ProbeTargetResult(
             target=original,
             host=host,
@@ -622,9 +827,9 @@ async def _probe_one(host: str, original: str, sem: asyncio.Semaphore) -> ProbeT
 
         res.tcp_banners = await _tcp_banner_grab(host, open_tcp)
 
-        # SCTP 与 TCP 并行无关：在 to_thread 中执行 Scapy sr1，避免阻塞 asyncio 事件循环。
+        # SCTP：DNS 在协程内 await；仅 Scapy sr1 进 to_thread，避免把可异步解析与阻塞 raw 发包绑在同一任务里。
         sctp_timeout = min(2.5, settings.probe_timeout_sec)
-        res.sctp_probe_findings = await asyncio.to_thread(_sctp_probe_all_ports_sync, host, SCTP_PROBE_PORTS, sctp_timeout)
+        res.sctp_probe_findings = await _sctp_probe_all_ports_async(host, SCTP_PROBE_PORTS, sctp_timeout)
 
         https_ok, status, lat, tls_err = await _https_head(host)
         res.https_ok = https_ok

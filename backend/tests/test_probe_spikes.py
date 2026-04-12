@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import socket
+from unittest.mock import MagicMock
+
 import pytest
 
 from app.services import probe_service
@@ -53,3 +56,31 @@ def test_parse_ike_response_hint_reads_exchange() -> None:
     data = b"\x00" * 16 + bytes([0, 0x20, 34, 0]) + b"\x00" * 8
     hint = probe_service._parse_ike_response_hint(data)
     assert "exchange_type=34" in hint
+
+
+@pytest.mark.asyncio
+async def test_resolve_udp_sockaddrs_async_uses_loop_getaddrinfo(monkeypatch: pytest.MonkeyPatch) -> None:
+    """UDP 解析应走 loop.getaddrinfo，与主探测异步 DNS 策略一致。"""
+
+    async def fake_getaddrinfo(*args: object, **kwargs: object) -> list[tuple[int, ...]]:
+        return [(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP, "", ("192.0.2.9", 500))]
+
+    mock_loop = MagicMock()
+    mock_loop.getaddrinfo = fake_getaddrinfo
+    monkeypatch.setattr(probe_service.asyncio, "get_running_loop", lambda: mock_loop)
+    rows = await probe_service._resolve_udp_sockaddrs_async("svc.lab", 500)
+    assert rows and rows[0][1][0] == "192.0.2.9"
+
+
+@pytest.mark.asyncio
+async def test_udp_spikes_async_all_silent(monkeypatch: pytest.MonkeyPatch) -> None:
+    """无解析结果时应全部为 SILENT，与同步矩阵语义一致。"""
+
+    async def _no_addrs(*a: object, **k: object) -> list[tuple[int, tuple]]:
+        return []
+
+    monkeypatch.setattr(probe_service, "_resolve_udp_sockaddrs_async", _no_addrs)
+    ok, lines = await probe_service._udp_spikes_for_port_async("192.0.2.1", 500, 0.05)
+    assert ok is False
+    assert len(lines) == 3
+    assert all("SILENT_DROP_OR_TIMEOUT" in x for x in lines)

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Dict, List
@@ -40,6 +41,27 @@ class AgentRun:
 
 
 _RUNS: Dict[str, AgentRun] = {}
+
+
+def _sanitize_llm_shell_command(raw: str) -> str:
+    """
+    清洗 LLM 输出的 shell：剥离 markdown 代码块围栏（```bash / ``` 等）。
+
+    为什么必须做结构化剥离而非信任模型「会输出纯 shell」：
+    - 实际部署中模型常在 command 字段内输出 ```bash\\n...\\n```，若原样交给沙箱，
+      反引号与换行会被 shell 解释成「子命令/此处文档」，导致验证步骤失败且难以审计根因。
+    - 本函数采用保守正则：去掉首尾围栏行；若模型仍夹带其它 markdown，沙箱元字符校验会二次拦截。
+    """
+    s = raw.strip()
+    s = re.sub(
+        r"^\s*```[ \t]*(?:bash|sh|shell|zsh|powershell|pwsh|cmd|console)?[ \t]*\r?\n?",
+        "",
+        s,
+        count=1,
+        flags=re.IGNORECASE,
+    )
+    s = re.sub(r"\r?\n?\s*```\s*$", "", s, count=1, flags=re.IGNORECASE)
+    return s.strip()
 
 
 def _react_system_prompt() -> str:
@@ -130,6 +152,11 @@ async def run_agent(
         "observations": observations,
         "synth_done": False,
         "sandbox_done": False,
+        # 仅当沙箱「允许执行」且进程 exit_code==0 时为 True；blocked/timed_out/非零退出均不算成功，
+        # 用于状态机强制拦截模型在未实测成功时直接 finish（旧版 sandbox_done 在 blocked 时也被置 True 是缺陷）。
+        "sandbox_success": False,
+        # 连续被沙箱静态策略拦截（blocked）次数；达到上限则终止循环，防止模型与策略死磕浪费 token。
+        "sandbox_policy_block_streak": 0,
         "playbook_evidence": [],
         "last_rationale": "",
     }
@@ -236,7 +263,8 @@ async def run_agent(
                 status = "error"
         elif decision.action == "execute_verify":
             # command: 单行 shell，将交给 exploit_sandbox_service 做 CIDR/黑名单校验后再 create_subprocess_shell。
-            cmd = (decision.action_input.get("command") or decision.action_input.get("cmd") or "").strip()
+            cmd_raw = (decision.action_input.get("command") or decision.action_input.get("cmd") or "").strip()
+            cmd = _sanitize_llm_shell_command(cmd_raw)
             title = (decision.action_input.get("title") or "execute_verify").strip()
             if not cmd:
                 out_payload = {"error": "empty_execute_verify_command"}
@@ -244,15 +272,62 @@ async def run_agent(
             else:
                 result = await exploit_sandbox_service.run_sandbox_command(cmd)
                 out_payload = result
-                observations.append({"kind": "sandbox_execute", "command": cmd, "result": result})
+                obs: dict[str, Any] = {"kind": "sandbox_execute", "command": cmd, "result": result}
+                if result.get("blocked"):
+                    # 模型不可信：策略拒绝必须在下一轮可见上下文中显式反馈，否则同一错误命令会被无限重试。
+                    reason = str(result.get("reason") or "unknown")
+                    obs["policy_hint_zh"] = (
+                        f"命令被沙箱安全策略拦截，原因：{reason}。请修改命令格式或更换工具（遵守单行、无管道/重定向）。"
+                    )
+                    ctx["sandbox_policy_block_streak"] = int(ctx.get("sandbox_policy_block_streak", 0)) + 1
+                else:
+                    ctx["sandbox_policy_block_streak"] = 0
+                observations.append(obs)
                 ev = _evidence_from_sandbox_result(title, cmd, result)
                 ctx["playbook_evidence"].append(ev.model_dump())
                 ctx["sandbox_done"] = True
+                if (
+                    result.get("allowed")
+                    and not result.get("blocked")
+                    and not result.get("timed_out")
+                    and result.get("exit_code") == 0
+                ):
+                    ctx["sandbox_success"] = True
+
+                max_blk = 3
+                if ctx.get("sandbox_policy_block_streak", 0) >= max_blk:
+                    observations.append(
+                        {
+                            "kind": "orchestrator_abort",
+                            "zh": f"沙箱策略已连续拦截 {max_blk} 次，强制终止编排循环；请重新审视目标与命令白名单。",
+                        }
+                    )
+                    finished_abort = datetime.now(timezone.utc).isoformat()
+                    steps.append(
+                        AgentStep(
+                            index=turn,
+                            skill_name="react_execute_verify",
+                            input=dict(decision.action_input),
+                            output={**out_payload, "aborted": True, "reason": "sandbox_policy_block_limit"},
+                            started_at=started,
+                            finished_at=finished_abort,
+                            status="error",
+                            thought=decision.thought,
+                        )
+                    )
+                    ctx["observations"] = observations
+                    break
         elif decision.action == "finish":
-            if ctx.get("synth_done") and not ctx.get("sandbox_done"):
+            if not ctx.get("sandbox_success"):
+                observations.append(
+                    {
+                        "kind": "orchestrator_policy_violation",
+                        "zh": "你尚未成功执行任何沙箱验证命令（需要沙箱允许执行且 exit_code==0）。禁止完成；请先修正后再 action=execute_verify。",
+                    }
+                )
                 out_payload = {
-                    "error": "finish_blocked_missing_execute_verify",
-                    "hint": "必须先执行 action=execute_verify 并产生 kind=sandbox_execute 观测后再 finish。",
+                    "error": "finish_blocked_missing_successful_execute_verify",
+                    "hint": "必须存在一次成功的沙箱执行（allowed、非 blocked、非 timed_out、exit_code==0）后才允许 finish。",
                 }
                 status = "error"
                 steps.append(
