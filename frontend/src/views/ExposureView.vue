@@ -2,7 +2,7 @@
   <div class="wrap">
     <h1 class="page-title">候选暴露面生成</h1>
     <p class="page-sub">
-      基于图谱上下文与 MCC/MNC 动态拼接候选 FQDN，并关联协议栈、网元、证据与风险假设。可在下方对<strong>授权实验网</strong>主机执行 DNS + HTTPS 探测（由后端白名单或 open 模式约束）。
+      <strong>Outside-in</strong>：先提交真实资产（域名 / IP / CIDR），后端在策略内执行主动探测，再以<strong>存活端口与协议事实</strong>生成候选与下游评估。MCC/MNC 仅作报表标签。
     </p>
 
     <div class="panel glass-card form-panel">
@@ -27,6 +27,17 @@
           <el-button text type="primary" @click="presetOperator">运营商预设 MCC/MNC</el-button>
         </el-form-item>
       </el-form>
+      <el-input
+        v-model="domainsInput"
+        type="textarea"
+        :rows="2"
+        placeholder="主域名 / 主机（每行一个），可含 https://host 形式"
+        class="mb-sm"
+      />
+      <div class="asset-inline">
+        <el-input v-model="ipsInput" type="textarea" :rows="2" placeholder="字面 IP（每行一个），需命中 open 或 CIDR 白名单" />
+        <el-input v-model="cidrsInput" type="textarea" :rows="2" placeholder="CIDR（每行一个），在配置上限内展开后探测" />
+      </div>
       <el-checkbox v-model="useLlmInAnalysis">分析时启用 LLM（攻击点 / 验证任务 / 标准证据检索）</el-checkbox>
       <el-alert v-if="err" type="error" :title="err" show-icon />
     </div>
@@ -257,6 +268,33 @@ const analysisLoading = ref(false);
 const reportLoading = ref(false);
 const reportMarkdown = ref("");
 const useLlmInAnalysis = ref(true);
+const domainsInput = ref("");
+const ipsInput = ref("");
+const cidrsInput = ref("");
+
+function parseLines(s: string): string[] {
+  return s
+    .split(/\r?\n/)
+    .map((x) => x.trim())
+    .filter(Boolean);
+}
+
+function assetPayload() {
+  return {
+    domains: parseLines(domainsInput.value),
+    ips: parseLines(ipsInput.value),
+    cidrs: parseLines(cidrsInput.value),
+  };
+}
+
+function requireAssets(): boolean {
+  const a = assetPayload();
+  if (!a.domains.length && !a.ips.length && !a.cidrs.length) {
+    err.value = "请至少填写主域名、IP 或 CIDR 中的一项";
+    return false;
+  }
+  return true;
+}
 
 const analysisRows = computed(() => {
   if (!analysis.value) return [];
@@ -344,6 +382,7 @@ function svcNodeId(s: string) {
 }
 
 async function generate() {
+  if (!requireAssets()) return;
   loading.value = true;
   err.value = null;
   try {
@@ -351,10 +390,12 @@ async function generate() {
       service: service.value,
       mcc: mcc.value,
       mnc: mnc.value,
+      include_probe: true,
+      ...assetPayload(),
     });
     rows.value = data;
   } catch (e: unknown) {
-    err.value = e instanceof Error ? e.message : "生成失败（检查 MCC/MNC 为数字）";
+    err.value = e instanceof Error ? e.message : "生成失败（检查资产格式与探测策略）";
     rows.value = [];
   } finally {
     loading.value = false;
@@ -362,6 +403,7 @@ async function generate() {
 }
 
 async function analyzeExposure() {
+  if (!requireAssets()) return;
   analysisLoading.value = true;
   err.value = null;
   reportMarkdown.value = "";
@@ -377,6 +419,7 @@ async function analyzeExposure() {
       include_probe: true,
       extra_hosts: extras,
       use_llm: useLlmInAnalysis.value,
+      ...assetPayload(),
     });
     analysis.value = data;
     if (data.probe_run && (data.probe_run as ProbeRun).results) {
@@ -406,10 +449,11 @@ async function loadReport() {
 }
 
 async function exportCsv() {
+  if (!requireAssets()) return;
   try {
     const { data } = await client.post<string>(
       "/api/exposure/export_csv",
-      { service: service.value, mcc: mcc.value, mnc: mnc.value },
+      { service: service.value, mcc: mcc.value, mnc: mnc.value, include_probe: true, ...assetPayload() },
       { responseType: "text" },
     );
     const blob = new Blob([data], { type: "text/csv;charset=utf-8" });
@@ -472,6 +516,17 @@ function onRowClick(row: ExposureRow) {
 }
 .mb-sm {
   margin-bottom: 10px;
+}
+.asset-inline {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+@media (max-width: 720px) {
+  .asset-inline {
+    grid-template-columns: 1fr;
+  }
 }
 .err-txt {
   color: #f56c6c;

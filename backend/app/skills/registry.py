@@ -8,7 +8,7 @@ from app.schemas.graph import GraphPayload
 from app.schemas.exposure import ExposureGenerateRequest, ExposureRow
 from app.services import extract_service, graph_engine
 from app.repositories.graph_repository import get_graph_repository
-from app.services.exposure_service import generate_rows
+from app.services.exposure_service import generate_probe_backed_rows
 from app.services.report_service import build_demo_summary_md, build_validation_markdown
 from app.schemas.probe import ProbeRunRequest
 from app.services import probe_service
@@ -142,19 +142,38 @@ def _init_builtin_skills() -> None:
     )
 
     # 4. generate_exposure_candidates
-    def _gen(args: dict[str, Any]) -> list[ExposureRow]:
+    async def _gen(args: dict[str, Any]) -> list[ExposureRow]:
         req = ExposureGenerateRequest(**args)
-        rows = generate_rows(req.service, req.mcc, req.mnc)
+        rows, _ = await generate_probe_backed_rows(
+            service=req.service,
+            domains=req.domains,
+            ips=req.ips,
+            cidrs=req.cidrs,
+            extra_hosts=None,
+            include_probe=req.include_probe,
+        )
         return [ExposureRow.model_validate(r) for r in rows]
 
     registry.register(
         SkillMetadata(
             name="generate_exposure_candidates",
             display_name="Generate Exposure Candidates",
-            description="基于图谱和 MCC/MNC 生成候选暴露面条目。",
-            input_schema={"type": "object", "properties": {"service": {}, "mcc": {}, "mnc": {}}, "required": ["service", "mcc", "mnc"]},
+            description="Outside-in：对真实域名/IP/CIDR 做授权探测后生成候选暴露面（存活端口与协议事实）。",
+            input_schema={
+                "type": "object",
+                "properties": {
+                    "service": {"type": "string"},
+                    "domains": {"type": "array", "items": {"type": "string"}},
+                    "ips": {"type": "array", "items": {"type": "string"}},
+                    "cidrs": {"type": "array", "items": {"type": "string"}},
+                    "mcc": {"type": "string"},
+                    "mnc": {"type": "string"},
+                    "include_probe": {"type": "boolean"},
+                },
+                "required": ["service"],
+            },
             output_schema={"type": "array", "items": {}},
-            tags=["exposure", "graph"],
+            tags=["exposure", "probe", "red_team"],
         ),
         _gen,
     )

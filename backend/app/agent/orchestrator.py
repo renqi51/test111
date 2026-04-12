@@ -42,14 +42,24 @@ _RUNS: Dict[str, AgentRun] = {}
 
 def _react_system_prompt() -> str:
     return (
-        "你是 3GPP 开放暴露面场景下的红队规划智能体（仅授权测试）。"
-        "每一步必须输出 JSON，字段为 thought / action / action_input，且满足 ReActAgentDecision Schema。\n"
-        "action 取值:\n"
-        "- probe: 对目标做 DNS/HTTPS/端口等真实探测；action_input 含 targets（逗号分隔主机名）与可选 context。\n"
-        "- graph_rag: 调用图谱+向量混合检索；action_input 含 question（完整问题语句）。\n"
-        "- synthesize: 你已掌握足够探测与图谱信息，准备生成最终渗透测试动作建议；action_input 可为空对象。\n"
-        "- finish: 结束循环；action_input 可为空对象。\n"
-        "策略: 若存在 target_asset，应优先 probe 再 graph_rag；graph_rag 问题必须显式包含协议/网元/服务名等可检索 token。"
+        "你是 5G 核心网 / Open Gateway 场景的红队编排智能体，仅在授权实验室内行动。\n"
+        "每一步必须输出 JSON：thought / action / action_input，且满足 ReActAgentDecision Schema。\n\n"
+        "强制打法链路（不得跳步、不得凭空调 graph_rag）：\n"
+        "1) Recon — 若上下文中尚无 kind=probe 的观测，或 targets 未覆盖用户给定 target_asset，"
+        "必须先 action=probe：action_input.targets 为逗号/分号分隔主机或 IP；"
+        "用真实探测结果（开放端口、udp_spike_findings、tcp_banners、HTTPS 状态）建立资产面。\n"
+        "2) Weaponize — 在完成 probe 后，必须至少一次 action=graph_rag，且 question 必须严格采用模板：\n"
+        "   「针对边界暴露的 [协议或端口列表，来自 probe] 在图谱中有哪些已知漏洞、威胁向量与可验证的利用前置条件？」\n"
+        "   将 [协议或端口列表] 替换为观测中的具体 token（如 IKEv2/UDP500、GTP-U/2152、SIP/TCP5060、HTTPS/443）。\n"
+        "3) Exploit Plan — 在已有 graph_rag 答案后，才能 action=synthesize："
+        "综合 probe + graph_rag，输出可落地的验证动作、抓包点位、畸形用例思路、DoS/越权验证路径（仍限于授权靶场）。\n"
+        "4) finish — 当 synthesize 已成功写入 observations 后，用 action=finish 结束。\n\n"
+        "action 枚举:\n"
+        "- probe: action_input.targets（必填，主机/IP 列表字符串）, 可选 context。\n"
+        "- graph_rag: action_input.question（必填，且符合上面 Weaponize 模板）。\n"
+        "- synthesize: action_input 可为 {}；须产出具体 Payload/工具参数级思路（非空泛合规声明）。\n"
+        "- finish: action_input 可为 {}。\n"
+        "禁止：在未执行 probe 前调用 graph_rag；在缺少 graph_rag 时调用 synthesize；编造未出现在观测中的端口/协议。"
     )
 
 
@@ -157,13 +167,15 @@ async def run_agent(
         elif decision.action == "synthesize":
             pb_schema = json.dumps(PentestPlaybookResponse.model_json_schema(), ensure_ascii=False)
             syn_user = (
-                "综合以下观测，输出授权实验室内可执行的渗透测试动作（不要利用脚本、不要非法步骤）。\n"
+                "你是红队 Exploit Planning 阶段：综合以下观测（含 probe 的端口、udp_spike_findings、tcp_banners 与 graph_rag），"
+                "输出仅在授权实验室内可执行的步骤；每条 recommendation 必须具体到工具/参数/抓包过滤表达式/发包字段偏移思路，"
+                "例如 nmap -sU -p 500 --script ike-version、对 SIP OPTIONS 响应做 CSeq 重放、对畸形 IKE major 版本观察 NOTIFY 类型等。\n"
                 f"观测 JSON:\n{json.dumps(observations, ensure_ascii=False)[:12000]}\n"
                 f"Schema:\n{pb_schema}\n"
             )
             try:
                 syn = await get_llm_provider().chat_json(
-                    system_prompt="你是渗透测试编排助手，只输出匹配 Schema 的 JSON。",
+                    system_prompt="你是攻击性渗透测试编排助手：只输出匹配 Schema 的 JSON；recommendations 必须可执行且指向验证而非实际未授权利用。",
                     user_prompt=syn_user,
                     model_name=settings.llm_model_name,
                     temperature=0.2,

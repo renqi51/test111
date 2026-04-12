@@ -7,7 +7,7 @@ from app.schemas.exposure import (
     ExposureGenerateRequest,
     ExposureRow,
 )
-from app.services.exposure_service import analyze_exposure, generate_rows, load_exposure_analysis
+from app.services.exposure_service import analyze_exposure, generate_probe_backed_rows, load_exposure_analysis
 import csv
 import io
 
@@ -15,14 +15,28 @@ router = APIRouter(tags=["exposure"])
 
 
 @router.post("/exposure/generate", response_model=list[ExposureRow])
-def exposure_generate(body: ExposureGenerateRequest):
-    rows = generate_rows(body.service, body.mcc, body.mnc)
+async def exposure_generate(body: ExposureGenerateRequest):
+    rows, _ = await generate_probe_backed_rows(
+        service=body.service,
+        domains=body.domains,
+        ips=body.ips,
+        cidrs=body.cidrs,
+        extra_hosts=None,
+        include_probe=body.include_probe,
+    )
     return [ExposureRow.model_validate(r) for r in rows]
 
 
 @router.post("/exposure/export_csv")
-def exposure_export_csv(body: ExposureGenerateRequest):
-    rows = generate_rows(body.service, body.mcc, body.mnc)
+async def exposure_export_csv(body: ExposureGenerateRequest):
+    rows, _ = await generate_probe_backed_rows(
+        service=body.service,
+        domains=body.domains,
+        ips=body.ips,
+        cidrs=body.cidrs,
+        extra_hosts=None,
+        include_probe=body.include_probe,
+    )
     buf = io.StringIO()
     w = csv.writer(buf)
     w.writerow(
@@ -48,6 +62,9 @@ async def exposure_analyze(body: ExposureAnalyzeRequest):
         service=body.service,
         mcc=body.mcc,
         mnc=body.mnc,
+        domains=body.domains,
+        ips=body.ips,
+        cidrs=body.cidrs,
         include_probe=body.include_probe,
         extra_hosts=body.extra_hosts,
         use_llm=body.use_llm,

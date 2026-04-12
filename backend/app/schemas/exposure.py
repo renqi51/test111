@@ -3,13 +3,28 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class ExposureGenerateRequest(BaseModel):
-    service: str = Field(description="VoWiFi | IMS | Open Gateway")
-    mcc: str = Field(min_length=3, max_length=3, pattern=r"^\d{3}$")
-    mnc: str = Field(min_length=2, max_length=3, pattern=r"^\d{2,3}$")
+    """Outside-in exposure: real crawl roots / IPs / CIDR materialization — no graph-invented FQDNs."""
+
+    service: str = Field(description="VoWiFi | IMS | Open Gateway (attack scenario label)")
+    domains: list[str] = Field(default_factory=list, description="Primary hostnames / roots from crawl or CT logs")
+    ips: list[str] = Field(default_factory=list, description="Literal IPs in authorized scope")
+    cidrs: list[str] = Field(default_factory=list, description="RFC1918 or lab CIDRs; expanded to hosts up to configured cap")
+    mcc: str = Field(default="000", min_length=3, max_length=3, pattern=r"^\d{3}$", description="Reporting / tenant label only")
+    mnc: str = Field(default="00", min_length=2, max_length=3, pattern=r"^\d{2,3}$", description="Reporting / tenant label only")
+    include_probe: bool = Field(default=True, description="When true, run live probe before emitting rows")
+
+    @model_validator(mode="after")
+    def _require_real_assets(self) -> ExposureGenerateRequest:
+        dom = [x.strip() for x in self.domains if x and str(x).strip()]
+        ip = [x.strip() for x in self.ips if x and str(x).strip()]
+        cidr = [x.strip() for x in self.cidrs if x and str(x).strip()]
+        if not dom and not ip and not cidr:
+            raise ValueError("outside_in_requires_assets: set at least one of domains, ips, cidrs")
+        return self
 
 
 class ExposureRow(BaseModel):
@@ -22,8 +37,7 @@ class ExposureRow(BaseModel):
 
 
 class ExposureAnalyzeRequest(ExposureGenerateRequest):
-    include_probe: bool = True
-    extra_hosts: list[str] = Field(default_factory=list)
+    extra_hosts: list[str] = Field(default_factory=list, description="Additional hostnames merged into domain set")
     use_llm: bool = True
 
 

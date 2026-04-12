@@ -2,9 +2,13 @@ from pydantic import BaseModel, Field
 
 
 class ProbeRunRequest(BaseModel):
-    """对给定主机名执行 DNS + HTTPS 可达性检查（需在配置的策略内）。"""
+    """对给定主机名或字面 IP 执行 DNS/端口/HTTPS 探测（需在配置的策略内）。"""
 
-    targets: list[str] = Field(min_length=1, max_length=64, description="主机名或 https://host 形式")
+    targets: list[str] = Field(
+        min_length=1,
+        max_length=64,
+        description="FQDN、字面 IPv4/IPv6，或 https://host / host:port 形式（CIDR 应在调用方展开）",
+    )
     context: str | None = Field(default=None, description="可选：来源说明，如 exposure:VoWiFi")
 
 
@@ -24,6 +28,14 @@ class ProbeTargetResult(BaseModel):
     tls_subject: str | None = None
     tls_error: str | None = None
     error: str | None = None
+    tcp_banners: dict[str, str] = Field(
+        default_factory=dict,
+        description="端口(字符串键) -> 可打印的 banner/首行响应前缀（含 SIP OPTIONS、HTTP 等）",
+    )
+    udp_spike_findings: list[str] = Field(
+        default_factory=list,
+        description="各 UDP spike（含畸形版本 IKE、截断 GTP-U 等）的响应摘要或 silent_drop 标记",
+    )
 
 
 class ProbeRunResponse(BaseModel):

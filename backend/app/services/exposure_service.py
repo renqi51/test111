@@ -1,14 +1,15 @@
-"""Candidate exposure surface generation from graph context + MCC/MNC.
+"""Outside-in exposure analysis: real assets → authorized live probe → candidates.
 
-This mid-stage version is graph-driven: it reads from the active graph backend
-(Neo4j by default, file fallback) and derives naming patterns, protocols,
-network functions, evidence docs and related risk hypotheses from relations.
+Candidates are grounded in `probe_service` observations (TCP/UDP banners and
+service hints). MCC/MNC are optional report labels only; no graph-derived FQDN
+guessing is performed in this module.
 """
 from __future__ import annotations
 
 import asyncio
+import ipaddress
 import json
-import re
+from collections.abc import Sequence
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -16,7 +17,6 @@ from uuid import uuid4
 
 from app.core.config import settings
 from app.providers.llm_provider import get_llm_provider
-from app.repositories.graph_repository import get_graph_repository
 from app.schemas.extraction_pipeline import EvidencePack
 from app.schemas.exposure import (
     AttackPath,
@@ -32,10 +32,223 @@ from app.services.graph_rag_query_service import get_graph_rag_query_service
 from app.services.prompt_registry_service import prompt_registry
 from app.services.spec_context_service import spec_context_service
 
-# Fallback when the graph has no Open Gateway naming pattern (must stay parameterized).
-DEFAULT_OPEN_GATEWAY_FQDN_TEMPLATE = "api.operator.mnc{mnc}.mcc{mcc}.example"
-
 _EVIDENCE_TEXT_CAP = 4000
+
+
+def _normalize_asset_token(raw: str) -> str:
+    s = raw.strip()
+    if not s:
+        return ""
+    if "://" in s:
+        from urllib.parse import urlparse
+
+        parsed = urlparse(s)
+        h = parsed.hostname
+        return (h or "").lower()
+    return s.split("/")[0].split(":")[0].lower().strip(".")
+
+
+def expand_real_asset_targets(
+    *,
+    domains: Sequence[str],
+    ips: Sequence[str],
+    cidrs: Sequence[str],
+    extra_hosts: Sequence[str] | None = None,
+    max_cidr_hosts: int | None = None,
+) -> list[str]:
+    """Materialize host/IP strings for probing; order-stable and deduplicated."""
+    cap = max_cidr_hosts if max_cidr_hosts is not None else settings.exposure_max_cidr_expand_hosts
+    out: list[str] = []
+    seen: set[str] = set()
+
+    def push(h: str) -> None:
+        n = _normalize_asset_token(h)
+        if not n or n in seen:
+            return
+        seen.add(n)
+        out.append(n)
+
+    for d in domains:
+        push(str(d))
+    if extra_hosts:
+        for d in extra_hosts:
+            push(str(d))
+    for ip in ips:
+        push(str(ip))
+
+    used = 0
+    for c in cidrs:
+        c = str(c).strip()
+        if not c:
+            continue
+        try:
+            net = ipaddress.ip_network(c, strict=False)
+        except ValueError:
+            continue
+        if net.prefixlen == net.max_prefixlen:
+            host_iter = [net.network_address]
+        else:
+            host_iter = list(net.hosts())
+        for host in host_iter:
+            if used >= cap:
+                break
+            push(str(host))
+            used += 1
+        if used >= cap:
+            break
+
+    return out
+
+
+def _protocol_labels_from_probe_row(row: dict[str, Any]) -> list[str]:
+    hints = [str(x) for x in (row.get("service_hints") or []) if x is not None]
+    for p in row.get("open_ports") or []:
+        try:
+            hints.append(f"tcp/{int(p)}")
+        except (TypeError, ValueError):
+            continue
+    for p in row.get("open_udp_ports") or []:
+        try:
+            hints.append(f"udp/{int(p)}")
+        except (TypeError, ValueError):
+            continue
+    for line in row.get("udp_spike_findings") or []:
+        s = str(line)
+        if ":REPLY " in s:
+            parts = s.split(":")
+            if len(parts) >= 4:
+                hints.append(f"spike_hit:{parts[1]}:{parts[2]}")
+    for pkey in (row.get("tcp_banners") or {}).keys():
+        hints.append(f"tcp_banner/{pkey}")
+    dedup: list[str] = []
+    sseen: set[str] = set()
+    for h in hints:
+        if h not in sseen:
+            sseen.add(h)
+            dedup.append(h)
+    return dedup
+
+
+def _risk_hypotheses_from_probe_row(row: dict[str, Any]) -> list[str]:
+    if row.get("permitted") is False:
+        reason = str(row.get("policy_reason") or "policy_denied")
+        return [
+            f"策略未放行（{reason}）：资产未进入主动包级探测链；在授权实验网调整 EXPOSURE_PROBE_MODE / "
+            "suffix allowlist 或 probe_allowlist_cidrs 后复扫以获取端口与协议事实。"
+        ]
+    labels = " ".join(_protocol_labels_from_probe_row(row)).lower()
+    out: list[str] = []
+    if "https" in labels or "tcp/443" in labels:
+        out.append(
+            "HTTPS(443) 暴露：验证 ALPN/http2 与 TLS1.2/1.3 降级、Host 走私与反代路径规范化；"
+            "对北向 OAuth2/OIDC 做 redirect_uri 绑定矩阵与 scope 提升尝试。"
+        )
+    if "sip" in labels or "tcp/5060" in labels:
+        out.append(
+            "SIP(5060) 响应：抓 REGISTER/INVITE 质询链，测异常方法/畸形 `Via`/`Route` 注入容忍度与 digest 中继边界。"
+        )
+    if "udp/500" in labels or "udp/4500" in labels or "ipsec" in labels:
+        out.append(
+            "IKE/IPsec(UDP 500/4500) 有回包：用畸形 IKE_SA_INIT（错误 major/minor、临界载荷）映射 NOTIFY 指纹与实现族。"
+        )
+    if "udp/2152" in labels or "gtp-u" in labels:
+        out.append(
+            "GTP-U(2152) 响应：枚举 TEID 可预测性与 echo 滥用面，测异常 GTP 头长度/类型组合下的静默丢弃 vs 错误码。"
+        )
+    if row.get("https_ok") is True:
+        out.append(
+            f"TLS+HTTP 栈存活（status={row.get('https_status')}）：拉取证书主体与链，比对 CT 遗漏子域与证书 SAN 过宽面。"
+        )
+    if not out and row.get("dns_ok") is True:
+        out.append(
+            "DNS 可达但未见配置端口命中：按授权范围扩大 TCP/UDP 端口表与 TLS ClientHello 指纹探测，排除仅对白名单源开放的静默丢弃。"
+        )
+    if row.get("dns_ok") is False and row.get("permitted") is True:
+        err = row.get("error") or "dns_failure"
+        out.append(f"解析失败（{err}）：核对爬虫根域、split-horizon 与内部 DNS 视图一致性。")
+    if not out:
+        out.append("无即时协议指纹：仍保留主机级事实入链，后续以全端口与被动监听补全。")
+    return out
+
+
+def _confidence_from_probe_row(row: dict[str, Any]) -> float:
+    if row.get("permitted") is False:
+        return 0.0
+    tcp_n = len(row.get("open_ports") or [])
+    udp_n = len(row.get("open_udp_ports") or [])
+    base = 0.38 + 0.06 * (tcp_n + udp_n)
+    if row.get("https_ok") is True:
+        base += 0.12
+    if row.get("dns_ok") is True:
+        base += 0.05
+    return round(min(0.95, base), 3)
+
+
+def rows_from_probe_run(probe_run: dict[str, Any], *, service: str) -> list[dict[str, Any]]:
+    """Build exposure table rows strictly from a serialized ProbeRunResponse."""
+    _ = service
+    rows: list[dict[str, Any]] = []
+    for item in probe_run.get("results") or []:
+        if not isinstance(item, dict):
+            continue
+        host = str(item.get("host") or item.get("target") or "").strip()
+        if not host:
+            continue
+        labels = _protocol_labels_from_probe_row(item)
+        rows.append(
+            {
+                "candidate_fqdn": host,
+                "protocol_stack": labels,
+                "network_functions": [],
+                "evidence_docs": [],
+                "risk_hypotheses": _risk_hypotheses_from_probe_row(item),
+                "confidence": _confidence_from_probe_row(item),
+            }
+        )
+    for r in rows:
+        r["protocol_stack"] = r.get("protocol_stack", [])
+        r["network_functions"] = r.get("network_functions", [])
+        r["risk_hypotheses"] = r.get("risk_hypotheses", [])
+    return rows
+
+
+async def generate_probe_backed_rows(
+    *,
+    service: str,
+    domains: Sequence[str],
+    ips: Sequence[str],
+    cidrs: Sequence[str],
+    extra_hosts: Sequence[str] | None,
+    include_probe: bool,
+) -> tuple[list[dict[str, Any]], dict[str, Any] | None]:
+    targets = expand_real_asset_targets(
+        domains=domains,
+        ips=ips,
+        cidrs=cidrs,
+        extra_hosts=extra_hosts,
+    )
+    if not targets:
+        raise ValueError("no_probe_targets_after_asset_expansion")
+    if not include_probe:
+        rows = [
+            {
+                "candidate_fqdn": h,
+                "protocol_stack": [],
+                "network_functions": [],
+                "evidence_docs": [],
+                "risk_hypotheses": [
+                    "include_probe=false：未执行主动发包探测；无存活端口/协议事实，不应进入武器化阶段。"
+                ],
+                "confidence": 0.04,
+            }
+            for h in targets
+        ]
+        return rows, None
+    probe_run = await probe_service.run_probe(
+        ProbeRunRequest(targets=targets, context=f"exposure_outside_in:{service}")
+    )
+    dumped = probe_run.model_dump()
+    return rows_from_probe_run(dumped, service=service), dumped
 
 
 def _sanitize_str_list(raw: Any) -> list[str]:
@@ -94,235 +307,22 @@ def _build_exposure_prompt_payload(candidate: ExposureCandidate, evidence_pack: 
     )
 
 
-def _pad_mnc(mnc: str) -> str:
-    m = mnc.strip()
-    if len(m) == 2:
-        return f"0{m}"
-    return m
-
-
-def _normalize_mcc(mcc: str) -> str:
-    s = mcc.strip()
-    if s.isdigit():
-        return s.zfill(3)
-    return s
-
-
-def _looks_like_fqdn_template(s: str) -> bool:
-    sl = s.lower()
-    if "." not in s:
-        return False
-    return ("mnc" in sl or "MNC" in s) and ("mcc" in sl or "MCC" in s) and ("{" in s or "<" in s)
-
-
-def fqdn_template_from_node(node: dict[str, Any]) -> str | None:
-    for key in ("template", "expression"):
-        v = node.get(key)
-        if isinstance(v, str) and _looks_like_fqdn_template(v):
-            return v.strip()
-    for key in ("en_identifier", "description", "label"):
-        v = node.get(key)
-        if isinstance(v, str) and _looks_like_fqdn_template(v):
-            return v.strip()
-    return None
-
-
-def render_fqdn_template(template: str, mcc: str, mnc3: str) -> str:
-    mcc_n = _normalize_mcc(mcc)
-    mnc_n = mnc3.strip()
-    out = template
-    out = re.sub(r"\{mcc\}", mcc_n, out, flags=re.IGNORECASE)
-    out = re.sub(r"\{mnc\}", mnc_n, out, flags=re.IGNORECASE)
-    out = re.sub(r"<MCC>", mcc_n, out, flags=re.IGNORECASE)
-    out = re.sub(r"<MNC>", mnc_n, out, flags=re.IGNORECASE)
-    return out
-
-
-def generate_rows(service: str, mcc: str, mnc: str) -> list[dict[str, Any]]:
-    mnc3 = _pad_mnc(mnc)
-    graph = get_graph_repository().get_graph()
-    nodes = {n["id"]: n for n in graph.get("nodes", [])}
-    edges = graph.get("edges", [])
-
-    # Map UI service name -> canonical service node id in the graph.
-    svc_key = service.strip().lower()
-    svc_id: str | None = None
-    if svc_key in ("ims",):
-        svc_id = "svc_ims"
-    elif svc_key in ("vowifi", "vo-wifi", "wifi"):
-        svc_id = "svc_vowifi"
-    elif svc_key in ("open gateway", "opengateway", "open_gateway"):
-        svc_id = "svc_open_gateway"
-
-    if not svc_id:
-        # Unknown service: keep demo deterministic but safe.
-        return [
-            {
-                "candidate_fqdn": f"svc.{svc_key}.mnc{mnc3}.mcc{mcc}.demo.local",
-                "protocol_stack": ["HTTPS"],
-                "network_functions": [],
-                "evidence_docs": [],
-                "risk_hypotheses": [],
-                "confidence": 0.2,
-            }
-        ]
-
-    # -------- helpers ------------------------------------------------------
-
-    def labels_of(node_ids: list[str]) -> list[str]:
-        out: list[str] = []
-        for nid in node_ids:
-            n = nodes.get(nid)
-            if n and n.get("label"):
-                out.append(n["label"])
-        # stable unique
-        seen = set()
-        uniq: list[str] = []
-        for x in out:
-            if x in seen:
-                continue
-            seen.add(x)
-            uniq.append(x)
-        return uniq
-
-    def rendered_fqdn_for_pattern(pattern_id: str) -> str | None:
-        node = nodes.get(pattern_id)
-        if not node:
-            return None
-        ntype = node.get("type")
-        if ntype not in ("FQDNPattern", "NamingRule"):
-            return None
-        tmpl = fqdn_template_from_node(node)
-        if not tmpl:
-            return None
-        return render_fqdn_template(tmpl, mcc, mnc3)
-
-    def find_targets(source: str, interaction: str) -> list[str]:
-        return [e["target"] for e in edges if e.get("source") == source and e.get("interaction") == interaction]
-
-    # -------- derive context from graph ----------------------------------
-
-    # 1) related network functions (direct uses_network_function)
-    direct_nfs = find_targets(svc_id, "uses_network_function")
-    # 2) naming pattern nodes reachable from service and its NFs
-    direct_patterns = find_targets(svc_id, "uses_naming_pattern")
-    nf_patterns: list[str] = []
-    for nf in direct_nfs:
-        nf_patterns.extend(find_targets(nf, "uses_naming_pattern"))
-    pattern_ids = list(dict.fromkeys(direct_patterns + nf_patterns))
-
-    # 3) protocol stack: service-level uses_protocol + NF-level uses_protocol/resolved_via
-    svc_proto_ids = find_targets(svc_id, "uses_protocol")
-    nf_proto_ids: list[str] = []
-    for nf in direct_nfs:
-        nf_proto_ids.extend(find_targets(nf, "uses_protocol"))
-        nf_proto_ids.extend(find_targets(nf, "resolved_via"))
-    proto_ids = list(dict.fromkeys(svc_proto_ids + nf_proto_ids))
-    protocol_stack = labels_of([pid for pid in proto_ids if nodes.get(pid, {}).get("type") == "Protocol"])
-
-    # 4) evidence docs: pattern --documented_in--> StandardDoc
-    # 5) risk hypotheses: service / reachable NFs / reachable Interfaces --targets--> RiskHypothesis
-    risk_ids: list[str] = []
-    interfaces = find_targets(svc_id, "exposes_interface")
-    for src in [svc_id] + direct_nfs + interfaces:
-        risk_ids.extend(find_targets(src, "targets"))
-    risk_ids = list(dict.fromkeys(risk_ids))
-
-    risk_labels = labels_of([rid for rid in risk_ids if nodes.get(rid, {}).get("type") == "RiskHypothesis"])
-
-    # -------- build candidate rows ----------------------------------------
-    rows: list[dict[str, Any]] = []
-
-    for pid in pattern_ids:
-        fqdn = rendered_fqdn_for_pattern(pid)
-        if not fqdn:
-            continue
-
-        # network functions relevant for this naming pattern
-        pattern_nfs: list[str] = []
-        # pattern linked from NFs
-        for nf in direct_nfs:
-            if any(
-                e.get("source") == nf and e.get("target") == pid and e.get("interaction") == "uses_naming_pattern"
-                for e in edges
-            ):
-                pattern_nfs.append(nf)
-        # pattern linked directly from service (fallback)
-        if not pattern_nfs and pid in direct_patterns:
-            pattern_nfs = direct_nfs if direct_nfs else [svc_id]
-
-        docs = labels_of(find_targets(pid, "documented_in"))
-        # confidence: simple heuristic based on docs presence
-        conf = 0.55 + min(0.3, 0.08 * len(docs))
-
-        rows.append(
-            {
-                "candidate_fqdn": fqdn,
-                "source_service": nodes.get(svc_id, {}).get("label", service),
-                "related_protocols": protocol_stack,
-                "related_network_functions": labels_of(pattern_nfs),
-                "evidence_docs": docs,
-                "related_risks": risk_labels,
-                "confidence": round(conf, 3),
-            }
-        )
-
-    # Open Gateway: graph-first northbound FQDN template; parameterized fallback if missing.
-    if not rows and svc_id == "svc_open_gateway":
-        platforms = find_targets(svc_id, "implemented_via")
-        docs = labels_of(
-            [
-                did
-                for p in platforms
-                for did in find_targets(p, "documented_in")
-                if nodes.get(did, {}).get("type") == "StandardDoc"
-            ]
-        )
-        tmpl: str | None = None
-        for src in [svc_id, *interfaces]:
-            for pid in find_targets(src, "uses_naming_pattern"):
-                n = nodes.get(pid)
-                if n and n.get("type") in ("FQDNPattern", "NamingRule"):
-                    tmpl = fqdn_template_from_node(n)
-                    if tmpl:
-                        break
-            if tmpl:
-                break
-        if not tmpl:
-            tmpl = DEFAULT_OPEN_GATEWAY_FQDN_TEMPLATE
-        fqdn = render_fqdn_template(tmpl, mcc, mnc3)
-        rows.append(
-            {
-                "candidate_fqdn": fqdn,
-                "source_service": nodes.get(svc_id, {}).get("label", service),
-                "related_protocols": protocol_stack,
-                "related_network_functions": labels_of(interfaces),
-                "evidence_docs": docs,
-                "related_risks": risk_labels,
-                "confidence": 0.6,
-            }
-        )
-
-    # Backward compatible keys for existing UI
-    # (ExposureView expects protocol_stack/network_functions/risk_hypotheses)
-    for r in rows:
-        r["protocol_stack"] = r.get("related_protocols", [])
-        r["network_functions"] = r.get("related_network_functions", [])
-        r["risk_hypotheses"] = r.get("related_risks", [])
-        # remove internal aliases (keep both)
-    return rows
-
-
 def _build_patterns(service: str, rows: list[dict[str, Any]]) -> list[ExposurePattern]:
     out: list[ExposurePattern] = []
     for idx, row in enumerate(rows):
+        expr = row["candidate_fqdn"]
+        try:
+            ipaddress.ip_address(expr)
+            cat = "route"
+        except ValueError:
+            cat = "fqdn"
         out.append(
             ExposurePattern(
                 pattern_id=f"pat_{service.lower().replace(' ', '_')}_{idx:02d}",
                 service=service,
-                category="fqdn",
-                expression=row["candidate_fqdn"],
-                rationale="Derived from 3GPP/GSMA naming pattern and graph relations.",
+                category=cat,
+                expression=expr,
+                rationale="Observed attack surface entrypoint from authorized active probe of supplied assets (outside-in).",
                 evidence_docs=row.get("evidence_docs", []),
             )
         )
@@ -330,21 +330,22 @@ def _build_patterns(service: str, rows: list[dict[str, Any]]) -> list[ExposurePa
 
 
 def _as_candidate(service: str, row: dict[str, Any], idx: int) -> ExposureCandidate:
-    graph_paths = [
-        f"{service}->uses_network_function->{nf}" for nf in (row.get("network_functions") or [])[:4]
-    ]
+    nfs = row.get("network_functions") or []
+    graph_paths = [f"{service}->uses_network_function->{nf}" for nf in nfs[:4]]
+    if not graph_paths:
+        graph_paths = [f"outside_in:live_probe->{row['candidate_fqdn']}"]
     return ExposureCandidate(
         candidate_id=f"cand_{idx:03d}",
         candidate_fqdn=row["candidate_fqdn"],
         service=service,
         protocols=row.get("protocol_stack", []),
-        network_functions=row.get("network_functions", []),
+        network_functions=nfs,
         confidence=float(row.get("confidence", 0.0)),
         evidence=CandidateEvidenceBundle(
             evidence_docs=row.get("evidence_docs", []),
             graph_paths=graph_paths,
             related_risks=row.get("risk_hypotheses", []),
-            source_kind=["standard_pattern", "graph_inference"],
+            source_kind=["probe_observation"],
         ),
         probe_status={},
     )
@@ -596,32 +597,61 @@ async def analyze_exposure(
     mcc: str,
     mnc: str,
     *,
+    domains: list[str] | None = None,
+    ips: list[str] | None = None,
+    cidrs: list[str] | None = None,
     include_probe: bool = True,
     extra_hosts: list[str] | None = None,
     use_llm: bool = True,
 ) -> ExposureAnalysisResponse:
     run_id = f"exp_{uuid4().hex[:10]}"
-    rows = generate_rows(service=service, mcc=mcc, mnc=mnc)
+    probe_run_payload: dict | None = None
+    rows: list[dict[str, Any]] = []
+    try:
+        rows, probe_run_payload = await generate_probe_backed_rows(
+            service=service,
+            domains=domains or [],
+            ips=ips or [],
+            cidrs=cidrs or [],
+            extra_hosts=extra_hosts,
+            include_probe=include_probe,
+        )
+    except (RuntimeError, ValueError) as exc:
+        probe_run_payload = {"error": str(exc), "results": []}
+        tlist = expand_real_asset_targets(
+            domains=domains or [],
+            ips=ips or [],
+            cidrs=cidrs or [],
+            extra_hosts=extra_hosts,
+        )
+        if tlist:
+            rows = [
+                {
+                    "candidate_fqdn": h,
+                    "protocol_stack": [],
+                    "network_functions": [],
+                    "evidence_docs": [],
+                    "risk_hypotheses": [
+                        f"主动探测链中断（{exc!s}）：在授权靶场启用并放行 probe 后重跑以填充存活端口/协议事实。"
+                    ],
+                    "confidence": 0.0,
+                }
+                for h in tlist
+            ]
+    except Exception as exc:  # noqa: BLE001
+        probe_run_payload = {"error": f"probe_failed:{exc}", "results": []}
+
+    if not rows and probe_run_payload and isinstance(probe_run_payload.get("results"), list):
+        rows = rows_from_probe_run(probe_run_payload, service=service)
+
     patterns = _build_patterns(service, rows)
     candidates = [_as_candidate(service, row, idx) for idx, row in enumerate(rows)]
 
-    probe_run_payload: dict | None = None
-    if include_probe:
-        targets = [c.candidate_fqdn for c in candidates]
-        if extra_hosts:
-            targets.extend([h.strip() for h in extra_hosts if h.strip()])
-        if targets:
-            try:
-                probe_run = await probe_service.run_probe(ProbeRunRequest(targets=targets, context=f"exposure:{service}"))
-                probe_run_payload = probe_run.model_dump()
-            except Exception:  # noqa: BLE001
-                probe_run_payload = {"error": "probe unavailable or blocked by policy"}
-
-    probe_map = {}
+    probe_map: dict[str, Any] = {}
     if probe_run_payload and isinstance(probe_run_payload.get("results"), list):
         probe_map = {str(item.get("host")): item for item in probe_run_payload["results"] if isinstance(item, dict)}
     for c in candidates:
-        c.probe_status = probe_map.get(c.candidate_fqdn, {})
+        c.probe_status = dict(probe_map.get(c.candidate_fqdn, {}))
         if c.probe_status:
             if "probe_observation" not in c.evidence.source_kind:
                 c.evidence.source_kind.append("probe_observation")

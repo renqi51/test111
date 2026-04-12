@@ -142,10 +142,14 @@ class Settings(BaseSettings):
     probe_max_concurrent: int = 8
     probe_verify_tls: bool = True
     probe_tcp_ports: str = "443,80,5060,2152,38412"
+    # Comma-separated CIDRs; in allowlist mode, literal IP targets must fall inside one of these nets.
+    probe_allowlist_cidrs: str = ""
 
     # Exposure: local spec corpus for 3GPP/GSMA retrieval (optional; see spec_context_service)
     exposure_spec_docs_path: str = str(DATA_DIR / "specs")
     exposure_evidence_top_k: int = 5
+    # Outside-in exposure: max hosts materialized from all CIDR inputs per analyze/generate call.
+    exposure_max_cidr_expand_hosts: int = 512
 
 
 settings = Settings()

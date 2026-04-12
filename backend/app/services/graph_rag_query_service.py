@@ -362,10 +362,13 @@ class GraphRAGQueryService:
         基于 GraphRAG 混合检索上下文，让 LLM 输出结构化攻击路径（非硬编码打分）。
         仅使用图谱+向量证据与给定候选/评估事实，不得臆造未在上下文中出现的 CVE 细节。
         """
+        cand_dump = json.dumps(candidate, ensure_ascii=False)
         q = (
-            "动态攻击面：针对以下暴露候选，结合 3GPP/CAMARA 图谱中的 ThreatVector、Vulnerability、"
-            "Protocol、NetworkFunction 关系，推导授权测试场景下的具体验证动作与威胁链路。"
-            f"\n服务上下文: {service}\n候选 JSON:\n{json.dumps(candidate, ensure_ascii=False)}"
+            "红队攻击链合成任务：以下暴露候选携带真实 probe 事实（open_ports、open_udp_ports、"
+            "udp_spike_findings 含 IKE/GTP-U 畸形探测回包或静默丢弃、tcp_banners 含 SIP/HTTP 首行等）。"
+            "请结合 3GPP/CAMARA 图谱中的 ThreatVector、Vulnerability、Protocol、NetworkFunction，"
+            "推导与该暴露面直接相关的黑客技术细节与验证动作。"
+            f"\n服务上下文: {service}\n候选 JSON:\n{cand_dump}"
         )
         if assessment:
             q += f"\n已有评估 JSON（可为空字段）:\n{json.dumps(assessment, ensure_ascii=False)}"
@@ -380,11 +383,16 @@ class GraphRAGQueryService:
         citations = list(prep["citations"])
         schema_json = json.dumps(AttackPathSynthesisBatch.model_json_schema(), ensure_ascii=False)
         system_prompt = (
-            "你是 3GPP / 运营商开放网络攻击面分析引擎。"
-            "必须严格基于提供的图谱上下文与原文上下文输出 JSON，字段需匹配给定 Schema。"
-            "techniques 必须是可落地的授权渗透测试步骤（例如协议抓包点位、鉴权边界测试），不要输出利用脚本或非法操作指令。"
-            "threat_vectors / vulnerabilities 使用简短中文短语，须能在上下文证据中找到对应或合理概括支撑。"
-            "paths 中每条必须包含 confidence 字段（0~1），表示该路径结构化结论与证据对齐程度。"
+            "你是面向 5G 核心网暴露面的攻击性 GraphRAG 合成引擎，输出仅用于授权红队演练。"
+            "必须严格基于图谱上下文与原文上下文输出 JSON，匹配 Schema。"
+            "techniques 每条必须包含可照抄的工具级指令或抓包/发包点位，例如："
+            "「nmap -sU -p500,4500 --script ike-version <target>」、"
+            "「scapy 发送 IKE_SA_INIT 且将 major 版本改为 0x3，观察是否返回 INVALID_MAJOR_VERSION NOTIFY」、"
+            "「对 UDP2152 发送截断 GTP-U 头并比对静默丢弃 vs ICMP/port unreachable」、"
+            "「对 TCP5060 发送畸形 Via 的 OPTIONS 并比对 200/403/481」；"
+            "禁止空泛的“加强监控”“定期审计”类表述。"
+            "threat_vectors / vulnerabilities 用简短中文，须与上下文证据或 probe 事实可对齐。"
+            "paths 中每条必须含 confidence（0~1）表示与证据对齐程度。"
         )
         user_prompt = (
             f"{q}\n\n"

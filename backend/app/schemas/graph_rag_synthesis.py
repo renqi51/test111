@@ -17,7 +17,7 @@ class AttackPathSynthesisRow(BaseModel):
     validation_status: Literal["hypothesis", "partially_validated", "validated"] = "hypothesis"
     techniques: list[str] = Field(
         default_factory=list,
-        description="授权测试环境下的具体验证动作（非利用脚本）。",
+        description="可执行的红队验证步骤：须含具体工具参数、脚本名、端口、抓包过滤式或畸形包字段说明（仅授权靶场）。",
     )
     threat_vectors: list[str] = Field(default_factory=list)
     vulnerabilities: list[str] = Field(default_factory=list)

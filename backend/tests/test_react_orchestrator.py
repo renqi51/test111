@@ -6,13 +6,26 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from app.agent import orchestrator
+from app.agent.orchestrator import _react_system_prompt
+
+
+def test_react_system_prompt_mandates_probe_before_graph_rag() -> None:
+    p = _react_system_prompt()
+    assert "Recon" in p and "Weaponize" in p and "Exploit Plan" in p
+    assert "必须先 action=probe" in p or "必须先" in p
 
 
 @pytest.mark.asyncio
 async def test_react_agent_probe_graph_rag_synthesize_finish() -> None:
     decisions = [
         {"thought": "先探测", "action": "probe", "action_input": {"targets": "lab.example.com"}},
-        {"thought": "查规范", "action": "graph_rag", "action_input": {"question": "HTTPS NEF OAuth2 安全要求"}},
+        {
+            "thought": "Weaponize",
+            "action": "graph_rag",
+            "action_input": {
+                "question": "针对边界暴露的 HTTPS/443、IKEv2/UDP500 在图谱中有哪些已知漏洞、威胁向量与可验证的利用前置条件？",
+            },
+        },
         {"thought": "综合", "action": "synthesize", "action_input": {}},
         {"thought": "结束", "action": "finish", "action_input": {}},
     ]
