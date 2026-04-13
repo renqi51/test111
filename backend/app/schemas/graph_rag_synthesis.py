@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -48,4 +48,5 @@ class ReActAgentDecision(BaseModel):
 
     thought: str = ""
     action: Literal["probe", "graph_rag", "synthesize", "execute_verify", "finish"] = "finish"
-    action_input: dict[str, str] = Field(default_factory=dict)
+    # LLM 常把 targets 写成列表或非字符串；用 Any 避免整轮 500，下游用 str() 或 get 再收敛
+    action_input: dict[str, Any] = Field(default_factory=dict)

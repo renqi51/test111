@@ -35,7 +35,8 @@ class Settings(BaseSettings):
     llm_chat_completions_url: str | None = None
     llm_api_key: SecretStr | None = None
     llm_model_name: str = "gpt-4.1-mini"
-    llm_timeout: int = 60
+    # httpx 读超时（秒）；ReAct / GraphRAG 单次 prompt 较大，60 易触发上游断开或 ReadTimeout
+    llm_timeout: int = 180
     llm_max_concurrency: int = 4
     llm_retry_attempts: int = 5
     llm_retry_min_wait_sec: int = 2
@@ -142,7 +143,7 @@ class Settings(BaseSettings):
     probe_max_concurrent: int = 8
     probe_verify_tls: bool = True
     probe_tcp_ports: str = "443,80,5060,2152,38412"
-    # Comma-separated CIDRs; in allowlist mode, literal IP targets must fall inside one of these nets.
+    # Comma-separated CIDRs; allowlist 模式下字面 IP（含 127.0.0.1、网元 IP）必须落在此列表，否则探测与沙箱会跳过。
     probe_allowlist_cidrs: str = ""
 
     # Exposure: local spec corpus for 3GPP/GSMA retrieval (optional; see spec_context_service)

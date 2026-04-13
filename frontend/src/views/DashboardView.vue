@@ -1,9 +1,7 @@
 <template>
   <div class="wrap">
-    <h1 class="page-title">大模型辅助的 3GPP 开放服务暴露面发现与实验验证</h1>
-    <p class="page-sub">
-      将标准证据、命名模式、协议栈与风险假设沉淀为图谱；串联规则/大模型抽取、候选 FQDN 生成与<strong>授权实验网</strong>下的 DNS/HTTPS 可达性探测，便于面向运营商场景联调演示。
-    </p>
+    <h1 class="page-title">总览</h1>
+    <p class="page-sub">图谱规模、校验摘要、探测与 Agent 最近运行一览。</p>
 
     <el-skeleton v-if="loading && !stats" :rows="6" animated />
     <el-alert v-else-if="err" type="error" :title="err" show-icon class="mb" />
@@ -55,7 +53,7 @@
               </el-table-column>
               <el-table-column prop="count" label="任务数" width="90" />
             </el-table>
-            <p class="hint">详细任务见「实验验证」页（mock 数据）。</p>
+            <p class="hint">以上为 mock 任务统计汇总。</p>
           </div>
         </el-col>
       </el-row>
@@ -86,9 +84,20 @@
               </el-descriptions-item>
               <el-descriptions-item label="探测策略">
                 <b>{{ systemStatus.probe?.enabled ? systemStatus.probe.mode : 'Off' }}</b>
-                <span v-if="systemStatus.probe?.allowlist_configured" class="muted-inline">（已配后缀白名单）</span>
-                <span v-else-if="systemStatus.probe?.mode === 'open'" class="muted-inline">（open 模式）</span>
-                <span v-else class="muted-inline">（需在 .env 配置后缀白名单）</span>
+                <span v-if="systemStatus.probe?.mode === 'open'" class="muted-inline">（open：全量放行，仅建议本机靶场）</span>
+                <span
+                  v-else-if="
+                    systemStatus.probe?.allowlist_suffixes_configured || systemStatus.probe?.allowlist_cidrs_configured
+                  "
+                  class="muted-inline"
+                >
+                  （已配：
+                  <template v-if="systemStatus.probe?.allowlist_suffixes_configured">域名后缀</template>
+                  <template v-if="systemStatus.probe?.allowlist_suffixes_configured && systemStatus.probe?.allowlist_cidrs_configured"> · </template>
+                  <template v-if="systemStatus.probe?.allowlist_cidrs_configured">CIDR（字面 IP）</template>
+                  ）
+                </span>
+                <span v-else class="muted-inline">（allowlist 下需在 .env 配置 EXPOSURE_PROBE_ALLOWLIST_SUFFIXES 或 EXPOSURE_PROBE_ALLOWLIST_CIDRS）</span>
               </el-descriptions-item>
             </el-descriptions>
           </div>
@@ -154,7 +163,13 @@ const systemStatus = ref<any>({
   neo4j: { enabled: false, ok: false, uri: null },
   llm: { enabled: false, provider: null, model: null },
   agent: { enabled: false },
-  probe: { enabled: false, mode: "allowlist", allowlist_configured: false },
+  probe: {
+    enabled: false,
+    mode: "allowlist",
+    allowlist_configured: false,
+    allowlist_suffixes_configured: false,
+    allowlist_cidrs_configured: false,
+  },
 });
 const agentRuns = ref<AgentRunBrief[]>([]);
 const probeLast = ref<ProbeRun | null>(null);

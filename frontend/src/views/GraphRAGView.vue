@@ -1,9 +1,7 @@
 <template>
   <div class="wrap">
-    <h1 class="page-title">GraphRAG Workspace</h1>
-    <p class="page-sub">
-      先将原文切块并抽取图谱后写入 Milvus，再基于图谱上下文与原文上下文进行混合检索问答。
-    </p>
+    <h1 class="page-title">GraphRAG</h1>
+    <p class="page-sub">图谱 + 原文混合检索问答。</p>
 
     <el-row :gutter="12">
       <el-col :xs="24" :lg="24">

@@ -160,6 +160,19 @@ export interface ProbeTargetResult {
   tls_subject: string | null;
   tls_error: string | null;
   error: string | null;
+  /** TCP 端口 -> banner / SIP OPTIONS 首行等 */
+  tcp_banners?: Record<string, string>;
+  /** UDP 畸形探针逐条结果 */
+  udp_spike_findings?: string[];
+  /** SCTP INIT（如 38412）探测轨迹 */
+  sctp_probe_findings?: string[];
+  /** HTTP/2 SBI 未授权 GET 各路径状态 */
+  sbi_unauth_probe?: {
+    paths?: Record<string, { status?: number | null; http_version?: string; error?: string; www_authenticate?: string }>;
+    skipped?: string;
+    fatal?: string;
+    note?: string;
+  };
 }
 
 export interface ProbeRun {
@@ -175,7 +188,47 @@ export interface ProbeStatusPayload {
   enabled: boolean;
   probe_mode: string;
   allowlist_configured: boolean;
+  allowlist_suffixes_configured: boolean;
+  allowlist_cidrs_configured: boolean;
   verify_tls: boolean;
   timeout_sec: number;
   max_concurrent: number;
+}
+
+/** ReAct Agent 单步（probe / graph_rag / synthesize / execute_verify） */
+export interface ReactAgentStep {
+  index: number;
+  skill_name: string;
+  input: Record<string, unknown>;
+  output: unknown;
+  started_at: string;
+  finished_at: string;
+  status: string;
+  thought?: string;
+}
+
+/** 沙箱 execute_verify 回填的实测证据 */
+export interface PlaybookEvidenceItem {
+  title: string;
+  validation_status: "Validated_Success" | "Validated_Failed" | "Skipped";
+  command_executed: string;
+  exit_code: number | null;
+  stdout_excerpt: string;
+  stderr_excerpt: string;
+  sandbox_decision_reason: string;
+}
+
+/** POST /api/agent/run 返回的 run 对象 */
+export interface ReactAgentRun {
+  id: string;
+  goal: string;
+  created_at: string;
+  steps: ReactAgentStep[];
+  final_recommendations: string[];
+  final_playbook?: {
+    recommendations?: string[];
+    rationale?: string;
+    evidence?: PlaybookEvidenceItem[];
+  };
+  context?: Record<string, unknown>;
 }

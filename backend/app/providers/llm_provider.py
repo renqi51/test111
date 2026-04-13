@@ -161,6 +161,7 @@ class OpenAICompatibleProvider(LLMProviderBase):
             (
                 httpx.TimeoutException,
                 httpx.ConnectError,
+                httpx.ReadError,
                 httpx.TransportError,
                 RetryableHTTPStatusError,
             )
@@ -178,9 +179,12 @@ class OpenAICompatibleProvider(LLMProviderBase):
         # 全局并发闸门：将所有入口统一纳入限流控制。
         async with _LLM_REQUEST_SEMAPHORE:
             try:
-                async with httpx.AsyncClient(timeout=settings.llm_timeout, follow_redirects=True) as client:
+                read_sec = max(60.0, float(settings.llm_timeout))
+                # 连接与 TLS 单独较短，读阶段允许更久（大上下文 + 慢网关）
+                timeout = httpx.Timeout(connect=25.0, read=read_sec, write=120.0, pool=30.0)
+                async with httpx.AsyncClient(timeout=timeout, follow_redirects=True) as client:
                     resp = await client.post(url, headers=headers, json=payload)
-            except (httpx.TimeoutException, httpx.ConnectError, httpx.TransportError):
+            except (httpx.TimeoutException, httpx.ConnectError, httpx.ReadError, httpx.TransportError):
                 # 交给 tenacity 判定并重试。
                 raise
 

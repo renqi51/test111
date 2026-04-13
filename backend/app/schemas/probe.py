@@ -60,7 +60,10 @@ class ProbeRunResponse(BaseModel):
 class ProbeStatusPayload(BaseModel):
     enabled: bool
     probe_mode: str
+    # 任一为真表示 allowlist 模式下「至少有一种」放行规则已配置（后缀域名 或 字面 IP 的 CIDR）
     allowlist_configured: bool
+    allowlist_suffixes_configured: bool
+    allowlist_cidrs_configured: bool
     verify_tls: bool
     timeout_sec: float
     max_concurrent: int

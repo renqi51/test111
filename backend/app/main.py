@@ -119,7 +119,10 @@ def system_status():
         "probe": {
             "enabled": settings.probe_enabled,
             "mode": settings.probe_mode,
-            "allowlist_configured": bool((settings.probe_allowlist_suffixes or "").strip()),
+            "allowlist_configured": bool((settings.probe_allowlist_suffixes or "").strip())
+            or bool((settings.probe_allowlist_cidrs or "").strip()),
+            "allowlist_suffixes_configured": bool((settings.probe_allowlist_suffixes or "").strip()),
+            "allowlist_cidrs_configured": bool((settings.probe_allowlist_cidrs or "").strip()),
         },
     }
 

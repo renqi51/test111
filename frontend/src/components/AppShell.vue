@@ -3,7 +3,7 @@
     <el-aside width="220px" class="aside glass-card">
       <div class="brand">
         <div class="brand-title">开放暴露面工作台</div>
-        <div class="brand-sub">3GPP / GSMA · 图谱 · 抽取 · 授权环境探测</div>
+        <div class="brand-sub">3GPP / GSMA · 图谱 · GraphRAG · 授权环境探测</div>
       </div>
       <el-menu
         :default-active="active"
@@ -21,10 +21,6 @@
           <el-icon><Share /></el-icon>
           <span>知识图谱</span>
         </el-menu-item>
-        <el-menu-item index="/extract">
-          <el-icon><Document /></el-icon>
-          <span>标准抽取</span>
-        </el-menu-item>
         <el-menu-item index="/agent">
           <el-icon><Document /></el-icon>
           <span>Agent / Skill</span>
@@ -36,14 +32,6 @@
         <el-menu-item index="/exposure">
           <el-icon><Aim /></el-icon>
           <span>候选暴露面</span>
-        </el-menu-item>
-        <el-menu-item index="/experiments">
-          <el-icon><Cpu /></el-icon>
-          <span>实验验证</span>
-        </el-menu-item>
-        <el-menu-item index="/reports">
-          <el-icon><Tickets /></el-icon>
-          <span>报告导出</span>
         </el-menu-item>
       </el-menu>
     </el-aside>
@@ -68,7 +56,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { useRoute } from "vue-router";
-import { Odometer, Share, Document, Aim, Cpu, Tickets, ChatLineSquare } from "@element-plus/icons-vue";
+import { Odometer, Share, Document, Aim, ChatLineSquare } from "@element-plus/icons-vue";
 
 const route = useRoute();
 const active = computed(() => (route.path === "/" ? "/" : route.path));

@@ -3,7 +3,7 @@
     <div class="top">
       <div>
         <h1 class="page-title">知识图谱</h1>
-        <p class="page-sub">Cytoscape.js · 类型着色 / 形状 · 过滤 · 导出（PNG / JSON）</p>
+        <p class="page-sub">浏览、过滤与导出（PNG / JSON）。</p>
       </div>
       <div class="cy-toolbar">
         <el-input v-model="subgraphQuery" placeholder="子图关键词（如 ims / oauth / ts 23.402）" clearable style="width: 280px" />

@@ -287,10 +287,15 @@ def get_last_run() -> dict[str, Any] | None:
 
 def probe_status() -> ProbeStatusPayload:
     suf = (settings.probe_allowlist_suffixes or "").strip()
+    cid = (settings.probe_allowlist_cidrs or "").strip()
+    suf_ok = bool(suf)
+    cid_ok = bool(cid)
     return ProbeStatusPayload(
         enabled=settings.probe_enabled,
         probe_mode=settings.probe_mode,
-        allowlist_configured=bool(suf),
+        allowlist_configured=suf_ok or cid_ok,
+        allowlist_suffixes_configured=suf_ok,
+        allowlist_cidrs_configured=cid_ok,
         verify_tls=settings.probe_verify_tls,
         timeout_sec=settings.probe_timeout_sec,
         max_concurrent=settings.probe_max_concurrent,

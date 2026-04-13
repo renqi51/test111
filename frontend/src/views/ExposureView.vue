@@ -2,7 +2,7 @@
   <div class="wrap">
     <h1 class="page-title">候选暴露面生成</h1>
     <p class="page-sub">
-      <strong>Outside-in</strong>：先提交真实资产（域名 / IP / CIDR），后端在策略内执行主动探测，再以<strong>存活端口与协议事实</strong>生成候选与下游评估。MCC/MNC 仅作报表标签。
+      提交域名 / IP / CIDR，在策略内探测后生成候选；分析页可看端口事实与 LLM 摘要。MCC/MNC 为报表标签。
     </p>
 
     <div class="panel glass-card form-panel">
@@ -38,7 +38,7 @@
         <el-input v-model="ipsInput" type="textarea" :rows="2" placeholder="字面 IP（每行一个），需命中 open 或 CIDR 白名单" />
         <el-input v-model="cidrsInput" type="textarea" :rows="2" placeholder="CIDR（每行一个），在配置上限内展开后探测" />
       </div>
-      <el-checkbox v-model="useLlmInAnalysis">分析时启用 LLM（攻击点 / 验证任务 / 标准证据检索）</el-checkbox>
+      <el-checkbox v-model="useLlmInAnalysis">分析时启用 LLM</el-checkbox>
       <el-alert v-if="err" type="error" :title="err" show-icon />
     </div>
 
@@ -53,20 +53,35 @@
         <el-table-column label="网元" min-width="160">
           <template #default="{ row }">{{ row.network_functions.join(", ") }}</template>
         </el-table-column>
-        <el-table-column prop="confidence" label="置信度" width="90" />
       </el-table>
-      <p class="hint">点击行：尝试跳转到图谱中的相关服务节点（新窗口路由）。</p>
+      <p class="hint">点击行可跳转图谱相关节点。</p>
     </div>
 
     <div class="panel glass-card probe-panel">
       <div class="probe-head">
         <span class="probe-title">授权环境探测</span>
         <el-tag v-if="probeStatus?.probe_mode === 'open'" type="warning" size="small">open 模式</el-tag>
-        <el-tag v-else-if="probeStatus?.allowlist_configured" type="success" size="small">后缀白名单已配置</el-tag>
-        <el-tag v-else type="info" size="small">请配置 EXPOSURE_PROBE_ALLOWLIST_SUFFIXES</el-tag>
+        <template v-else>
+          <el-tag v-if="probeStatus?.allowlist_suffixes_configured" type="success" size="small">域名后缀白名单</el-tag>
+          <el-tag v-if="probeStatus?.allowlist_cidrs_configured" type="success" size="small">CIDR 白名单（字面 IP）</el-tag>
+          <el-tag v-if="!probeStatus?.allowlist_configured" type="info" size="small">未配置放行规则</el-tag>
+        </template>
       </div>
+      <el-alert
+        v-if="probeStatus && probeStatus.probe_mode === 'allowlist' && !probeStatus.allowlist_cidrs_configured"
+        type="warning"
+        show-icon
+        :closable="false"
+        class="mb-sm"
+        title="字面 IP 需配置 EXPOSURE_PROBE_ALLOWLIST_CIDRS（后缀白名单不生效）"
+        description="例：127.0.0.0/8,::1/128 或实验网 CIDR；本机可设 EXPOSURE_PROBE_MODE=open。改 .env 后重启 API。"
+      />
       <p class="probe-hint">
-        对下方主机列表执行并发探测（最多 {{ probeStatus?.max_concurrent ?? "—" }} 路）。未命中策略的主机会被跳过并标注原因。
+        最多 {{ probeStatus?.max_concurrent ?? "—" }} 路并发；未放行主机会跳过。展开行可看 SCTP / UDP / SBI / TCP 细节。
+      </p>
+      <p v-if="probeRun?.summary" class="probe-hint muted-sum">
+        本轮汇总：SCTP INIT 有应答 {{ probeRun.summary.sctp_init_replies ?? "—" }} · SBI 路径已请求
+        {{ probeRun.summary.sbi_paths_probed ?? "—" }} · UDP spike 回包行 {{ probeRun.summary.udp_spike_reply_lines ?? "—" }}
       </p>
       <el-input
         v-model="extraHosts"
@@ -82,7 +97,34 @@
         <el-button :loading="probeLoading" @click="fetchProbeStatus">刷新策略</el-button>
       </div>
       <el-alert v-if="probeErr" type="error" :title="probeErr" show-icon class="mb-sm" />
-      <el-table v-if="probeRun" :data="probeRun.results" size="small" stripe max-height="320">
+      <el-table v-if="probeRun" :data="probeRun.results" size="small" stripe max-height="420">
+        <el-table-column type="expand" width="48">
+          <template #default="{ row }">
+            <div class="probe-expand">
+              <template v-if="(row.sctp_probe_findings || []).length">
+                <div class="expand-title">SCTP（INIT 探针）</div>
+                <pre class="expand-pre">{{ (row.sctp_probe_findings || []).join("\n") }}</pre>
+              </template>
+              <template v-if="(row.udp_spike_findings || []).length">
+                <div class="expand-title">UDP spike 矩阵</div>
+                <pre class="expand-pre">{{ (row.udp_spike_findings || []).join("\n") }}</pre>
+              </template>
+              <template v-if="row.sbi_unauth_probe?.paths && Object.keys(row.sbi_unauth_probe.paths).length">
+                <div class="expand-title">SBI HTTP/2 未授权 GET（鉴权面）</div>
+                <pre class="expand-pre">{{ formatSbiProbe(row.sbi_unauth_probe) }}</pre>
+              </template>
+              <template v-else-if="row.sbi_unauth_probe?.skipped || row.sbi_unauth_probe?.fatal">
+                <div class="expand-title">SBI 探测</div>
+                <pre class="expand-pre">{{ JSON.stringify(row.sbi_unauth_probe, null, 2) }}</pre>
+              </template>
+              <template v-if="row.tcp_banners && Object.keys(row.tcp_banners).length">
+                <div class="expand-title">TCP banner / SIP OPTIONS</div>
+                <pre class="expand-pre">{{ JSON.stringify(row.tcp_banners, null, 2) }}</pre>
+              </template>
+              <div v-if="!expandHasExtra(row)" class="muted-dash">无 SCTP/SBI/UDP 扩展字段（旧缓存或探测被跳过）</div>
+            </div>
+          </template>
+        </el-table-column>
         <el-table-column prop="host" label="主机" min-width="200" />
         <el-table-column label="策略" width="88">
           <template #default="{ row }">
@@ -137,33 +179,36 @@
         <el-tag size="small" type="success">run_id: {{ analysis.run_id }}</el-tag>
       </div>
       <p class="probe-hint">
-        候选 {{ analysis.summary?.total_candidates ?? 0 }}，高风险 {{ analysis.summary?.high_or_critical ?? 0 }}，
-        授权可达 {{ analysis.summary?.probe_reachable ?? 0 }}，路径 {{ analysis.summary?.attack_paths ?? 0 }}，
-        已验证路径 {{ analysis.summary?.validated_paths ?? 0 }}，LLM {{ analysis.summary?.llm_used ? "已使用" : "未使用" }}
+        候选 {{ analysis.summary?.total_candidates ?? 0 }} · 高危 {{ analysis.summary?.high_or_critical ?? 0 }} ·
+        可达 {{ analysis.summary?.probe_reachable ?? 0 }} · 路径 {{ analysis.summary?.attack_paths ?? 0 }} · LLM
+        {{ analysis.summary?.llm_used ? "开" : "关" }}
       </p>
       <el-table :data="analysisRows" size="small" stripe>
+        <el-table-column type="expand" width="48">
+          <template #default="{ row }">
+            <div class="probe-expand">
+              <div class="expand-title">候选 {{ row.candidate_fqdn }} — 探测原始字段</div>
+              <pre class="expand-pre">{{ JSON.stringify(row.probe_status || {}, null, 2) }}</pre>
+            </div>
+          </template>
+        </el-table-column>
         <el-table-column prop="candidate_fqdn" label="候选 FQDN" min-width="220" />
-        <el-table-column prop="risk_level" label="风险级别" width="100">
+        <el-table-column prop="risk_level" label="风险" width="88">
           <template #default="{ row }">
             <el-tag :type="riskTagType(row.risk_level)" size="small">{{ row.risk_level }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="score" label="分数" width="90" />
         <el-table-column label="探测" min-width="140">
           <template #default="{ row }">
             DNS {{ row.dns_ok ? "OK" : "×" }} / HTTPS {{ row.https_ok === true ? row.https_status : "×" }}
           </template>
         </el-table-column>
-        <el-table-column label="指纹" min-width="160">
+        <el-table-column label="指纹" min-width="200">
           <template #default="{ row }">
             TCP {{ row.open_ports.length ? row.open_ports.join(",") : "—" }} · UDP
             {{ row.open_udp_ports?.length ? row.open_udp_ports.join(",") : "—" }} /
             {{ row.service_hints.length ? row.service_hints.join(",") : "unknown" }}
-          </template>
-        </el-table-column>
-        <el-table-column label="来源" min-width="180">
-          <template #default="{ row }">
-            {{ row.source_kind.join(", ") }}
+            <div v-if="row.sbi_hint" class="sbi-hint">{{ row.sbi_hint }}</div>
           </template>
         </el-table-column>
         <el-table-column label="潜在攻击点" min-width="220">
@@ -200,31 +245,25 @@
             <span v-else class="muted-dash">—</span>
           </template>
         </el-table-column>
-        <el-table-column prop="summary" label="摘要" min-width="260" />
+        <el-table-column prop="summary" label="摘要" min-width="200" show-overflow-tooltip />
       </el-table>
 
       <el-collapse class="mt-sm">
         <el-collapse-item title="模式与证据" name="patterns">
           <el-table :data="analysis.patterns" size="small" stripe>
-            <el-table-column prop="pattern_id" label="pattern_id" width="180" />
-            <el-table-column prop="expression" label="表达式/候选模式" min-width="220" />
-            <el-table-column label="证据文档" min-width="220">
-              <template #default="{ row }">{{ row.evidence_docs?.join(", ") || "n/a" }}</template>
-            </el-table-column>
-            <el-table-column prop="rationale" label="依据" min-width="240" />
+            <el-table-column prop="expression" label="模式" min-width="200" />
+            <el-table-column prop="rationale" label="依据" min-width="260" show-overflow-tooltip />
           </el-table>
         </el-collapse-item>
         <el-collapse-item title="攻击路径（推演）" name="paths">
           <el-table :data="analysis.attack_paths" size="small" stripe>
-            <el-table-column prop="path_id" label="path_id" width="180" />
-            <el-table-column prop="entrypoint" label="入口" min-width="220" />
-            <el-table-column label="跳板/路径" min-width="220">
-              <template #default="{ row }">{{ row.pivots?.join(" -> ") || "n/a" }}</template>
+            <el-table-column prop="path_id" label="路径" width="140" show-overflow-tooltip />
+            <el-table-column prop="entrypoint" label="入口" min-width="200" />
+            <el-table-column label="跳板" min-width="200">
+              <template #default="{ row }">{{ row.pivots?.join(" -> ") || "—" }}</template>
             </el-table-column>
-            <el-table-column prop="target_asset" label="目标资产" min-width="140" />
-            <el-table-column prop="likelihood" label="可能性" width="90" />
-            <el-table-column prop="impact" label="影响" width="90" />
-            <el-table-column prop="validation_status" label="验证状态" width="130" />
+            <el-table-column prop="target_asset" label="目标" min-width="120" />
+            <el-table-column prop="validation_status" label="验证" width="110" />
           </el-table>
         </el-collapse-item>
       </el-collapse>
@@ -247,8 +286,16 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
-import client from "@/api/client";
-import type { ExposureAnalysisResponse, ExposureAssessment, ExposureCandidate, ExposureRow, ProbeRun, ProbeStatusPayload } from "@/types/graph";
+import client, { TIMEOUT_EXPOSURE_ANALYZE_MS } from "@/api/client";
+import type {
+  ExposureAnalysisResponse,
+  ExposureAssessment,
+  ExposureCandidate,
+  ExposureRow,
+  ProbeRun,
+  ProbeStatusPayload,
+  ProbeTargetResult,
+} from "@/types/graph";
 
 const router = useRouter();
 const service = ref("IMS");
@@ -296,16 +343,54 @@ function requireAssets(): boolean {
   return true;
 }
 
+/** 展开行是否有 SCTP/SBI/UDP/banner 任一内容，用于占位提示 */
+function expandHasExtra(row: ProbeTargetResult) {
+  const sbi = row.sbi_unauth_probe;
+  const sbiPaths = sbi?.paths && Object.keys(sbi.paths).length;
+  return !!(
+    (row.sctp_probe_findings || []).length ||
+    (row.udp_spike_findings || []).length ||
+    (row.tcp_banners && Object.keys(row.tcp_banners).length) ||
+    sbiPaths ||
+    sbi?.skipped ||
+    sbi?.fatal
+  );
+}
+
+/** 将 SBI 探测结果格式化为可读文本（路径 -> status / http_version） */
+function formatSbiProbe(raw: NonNullable<ProbeTargetResult["sbi_unauth_probe"]>) {
+  const paths = raw.paths || {};
+  const lines: string[] = [];
+  for (const [p, v] of Object.entries(paths)) {
+    const st = v.status != null ? String(v.status) : v.error ? `err:${String(v.error).slice(0, 80)}` : "?";
+    const ver = v.http_version != null ? String(v.http_version) : "";
+    lines.push(`${p}  →  HTTP ${st}  (${ver})`);
+  }
+  return lines.join("\n") || JSON.stringify(raw, null, 2);
+}
+
+/** 从 probe_status.sbi_unauth_probe 提取一行摘要，便于表格列展示 */
+function sbiSummaryFromProbe(ps: Record<string, unknown>): string {
+  const sbi = ps.sbi_unauth_probe as ProbeTargetResult["sbi_unauth_probe"];
+  if (!sbi || sbi.skipped) return "";
+  const paths = sbi.paths || {};
+  const parts = Object.entries(paths)
+    .map(([k, v]) => `${k.split("/").filter(Boolean).slice(-2).join("/")}:${v.status ?? "?"}`)
+    .slice(0, 2);
+  return parts.length ? `SBI: ${parts.join(" · ")}` : "";
+}
+
 const analysisRows = computed(() => {
   if (!analysis.value) return [];
   const byId = new Map<string, ExposureAssessment>();
   analysis.value.assessments.forEach((x) => byId.set(x.candidate_id, x));
   return analysis.value.candidates.map((c: ExposureCandidate) => {
     const a = byId.get(c.candidate_id);
+    const ps = (c.probe_status || {}) as Record<string, unknown>;
     return {
+      candidate_id: c.candidate_id,
       candidate_fqdn: c.candidate_fqdn,
       risk_level: a?.risk_level ?? "low",
-      score: a?.score ?? 0,
       summary: a?.summary ?? "",
       attack_points: a?.attack_points ?? [],
       validation_tasks: a?.validation_tasks ?? [],
@@ -315,7 +400,8 @@ const analysisRows = computed(() => {
       open_ports: c.probe_status?.open_ports ?? [],
       open_udp_ports: c.probe_status?.open_udp_ports ?? [],
       service_hints: c.probe_status?.service_hints ?? [],
-      source_kind: c.evidence?.source_kind ?? [],
+      probe_status: ps,
+      sbi_hint: sbiSummaryFromProbe(ps),
     };
   });
 });
@@ -412,15 +498,19 @@ async function analyzeExposure() {
       .split(/\r?\n/)
       .map((s) => s.trim())
       .filter(Boolean);
-    const { data } = await client.post<ExposureAnalysisResponse>("/api/exposure/analyze", {
-      service: service.value,
-      mcc: mcc.value,
-      mnc: mnc.value,
-      include_probe: true,
-      extra_hosts: extras,
-      use_llm: useLlmInAnalysis.value,
-      ...assetPayload(),
-    });
+    const { data } = await client.post<ExposureAnalysisResponse>(
+      "/api/exposure/analyze",
+      {
+        service: service.value,
+        mcc: mcc.value,
+        mnc: mnc.value,
+        include_probe: true,
+        extra_hosts: extras,
+        use_llm: useLlmInAnalysis.value,
+        ...assetPayload(),
+      },
+      { timeout: TIMEOUT_EXPOSURE_ANALYZE_MS },
+    );
     analysis.value = data;
     if (data.probe_run && (data.probe_run as ProbeRun).results) {
       probeRun.value = data.probe_run as ProbeRun;
@@ -548,5 +638,35 @@ function onRowClick(row: ExposureRow) {
 }
 .muted-dash {
   color: var(--muted);
+}
+.muted-sum {
+  opacity: 0.9;
+}
+.probe-expand {
+  padding: 8px 12px 12px;
+  max-width: 900px;
+}
+.expand-title {
+  font-weight: 600;
+  font-size: 12px;
+  margin: 10px 0 4px;
+  color: #a8c4ff;
+}
+.expand-pre {
+  margin: 0;
+  padding: 8px 10px;
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 8px;
+  font-size: 11px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-all;
+  max-height: 280px;
+  overflow: auto;
+}
+.sbi-hint {
+  font-size: 11px;
+  color: #c9e78a;
+  margin-top: 4px;
 }
 </style>

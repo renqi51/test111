@@ -1,5 +1,13 @@
 from __future__ import annotations
 
+import sys
+from pathlib import Path
+
+# backend 目录需在 sys.path 中，否则直接 `python .../orchestrator.py` 会找不到 `app`。
+_backend_root = Path(__file__).resolve().parents[2]
+if str(_backend_root) not in sys.path:
+    sys.path.insert(0, str(_backend_root))
+
 import json
 import re
 from dataclasses import asdict, dataclass, field
@@ -41,6 +49,233 @@ class AgentRun:
 
 
 _RUNS: Dict[str, AgentRun] = {}
+
+
+def _as_plain_str(value: Any) -> str:
+    """LLM 的 action_input 可能给出 list/数字等，避免对非 str 调 .strip() 导致 AttributeError → HTTP 500。"""
+    if value is None:
+        return ""
+    if isinstance(value, (list, tuple)):
+        parts = [_as_plain_str(x) for x in value]
+        return ", ".join(p for p in parts if p).strip()
+    return str(value).strip()
+
+
+# ReAct 每轮整包 JSON 过大会拖垮网关/触发「连接断开」；全量仍保存在 ctx.observations，仅对 LLM prompt 瘦身。
+_MAX_LLM_CTX_JSON = 32000
+_MAX_PROBE_FINDING_LINES = 24
+_MAX_PROBE_LINE_LEN = 220
+
+
+def _clip_str_lines(lines: Any, *, max_lines: int, max_line_len: int) -> list[str]:
+    out: list[str] = []
+    raw = list(lines or [])
+    for i, line in enumerate(raw[:max_lines]):
+        s = str(line)
+        if len(s) > max_line_len:
+            s = s[: max_line_len - 3] + "..."
+        out.append(s)
+    if len(raw) > max_lines:
+        out.append(f"...({len(raw)} lines total, truncated for LLM)")
+    return out
+
+
+def _compact_sbi(d: Any) -> dict[str, Any]:
+    if not isinstance(d, dict):
+        return {}
+    paths = d.get("paths") or {}
+    slim_paths: dict[str, Any] = {}
+    for k, v in list(paths.items())[:16]:
+        if isinstance(v, dict):
+            slim_paths[k] = {
+                kk: vv for kk, vv in v.items() if kk in ("status", "http_version", "www_authenticate", "fatal")
+            }
+        else:
+            slim_paths[k] = v
+    return {
+        "skipped": d.get("skipped"),
+        "paths": slim_paths,
+        "fatal": (str(d.get("fatal") or "")[:400]),
+        "mTLS_Enforced": d.get("mTLS_Enforced"),
+    }
+
+
+def _compact_probe_row(row: Any) -> dict[str, Any]:
+    if not isinstance(row, dict):
+        return {"_invalid_row": str(row)[:200]}
+    banners = row.get("tcp_banners") or {}
+    slim_b: dict[str, str] = {}
+    if isinstance(banners, dict):
+        for k, v in list(banners.items())[:24]:
+            sv = str(v)
+            slim_b[str(k)] = sv[:600] + ("..." if len(sv) > 600 else "")
+    return {
+        "target": row.get("target"),
+        "host": row.get("host"),
+        "permitted": row.get("permitted"),
+        "policy_reason": row.get("policy_reason"),
+        "dns_ok": row.get("dns_ok"),
+        "dns_addresses": (row.get("dns_addresses") or [])[:24],
+        "https_ok": row.get("https_ok"),
+        "https_status": row.get("https_status"),
+        "https_latency_ms": row.get("https_latency_ms"),
+        "open_ports": row.get("open_ports"),
+        "open_udp_ports": row.get("open_udp_ports"),
+        "service_hints": (row.get("service_hints") or [])[:32],
+        "tls_subject": (str(row.get("tls_subject") or "")[:240]),
+        "tls_error": (str(row.get("tls_error") or "")[:500]),
+        "error": (str(row.get("error") or "")[:500]),
+        "tcp_banners": slim_b,
+        "udp_spike_findings": _clip_str_lines(
+            row.get("udp_spike_findings"), max_lines=_MAX_PROBE_FINDING_LINES, max_line_len=_MAX_PROBE_LINE_LEN
+        ),
+        "sctp_probe_findings": _clip_str_lines(
+            row.get("sctp_probe_findings"), max_lines=_MAX_PROBE_FINDING_LINES, max_line_len=_MAX_PROBE_LINE_LEN
+        ),
+        "sbi_unauth_probe": _compact_sbi(row.get("sbi_unauth_probe")),
+    }
+
+
+def _compact_observations_for_llm(observations: list[Any]) -> list[dict[str, Any]]:
+    out: list[dict[str, Any]] = []
+    for o in observations:
+        if not isinstance(o, dict):
+            continue
+        kind = o.get("kind")
+        if kind == "probe":
+            res = o.get("results") or []
+            out.append(
+                {
+                    "kind": "probe",
+                    "summary": o.get("summary"),
+                    "results": [_compact_probe_row(r) for r in res],
+                }
+            )
+        elif kind == "graph_rag":
+            ans = o.get("answer")
+            entry: dict[str, Any] = {"kind": "graph_rag", "question": (str(o.get("question") or "")[:2000])}
+            if isinstance(ans, dict):
+                entry["answer"] = {
+                    "answer": str(ans.get("answer") or "")[:8000],
+                    "confidence": ans.get("confidence"),
+                    "citations": (ans.get("citations") or [])[:35],
+                    "notes": (ans.get("notes") or [])[:25],
+                }
+            else:
+                entry["answer"] = ans
+            tvv = o.get("threat_vectors_verbatim")
+            if isinstance(tvv, list) and tvv:
+                entry["threat_vectors_verbatim"] = tvv[:8]
+            out.append(entry)
+        elif kind == "synthesize":
+            pb = o.get("playbook")
+            if isinstance(pb, dict):
+                recs = pb.get("recommendations") or []
+                slim_pb = {
+                    "recommendations": [str(x)[:1200] for x in recs[:30]],
+                    "rationale": str(pb.get("rationale") or "")[:6000],
+                }
+                out.append({"kind": "synthesize", "playbook": slim_pb})
+            else:
+                out.append({"kind": "synthesize", "playbook": pb})
+        elif kind == "sandbox_execute":
+            res = o.get("result") or {}
+            if isinstance(res, dict):
+                out.append(
+                    {
+                        "kind": "sandbox_execute",
+                        "command": str(o.get("command") or "")[:2000],
+                        "result": {
+                            "allowed": res.get("allowed"),
+                            "blocked": res.get("blocked"),
+                            "timed_out": res.get("timed_out"),
+                            "exit_code": res.get("exit_code"),
+                            "reason": str(res.get("reason") or "")[:600],
+                            "stdout": str(res.get("stdout") or "")[:2500],
+                            "stderr": str(res.get("stderr") or "")[:2000],
+                        },
+                    }
+                )
+            else:
+                out.append({"kind": "sandbox_execute", "command": o.get("command"), "result": res})
+        elif kind == "user_text":
+            out.append({"kind": "user_text", "content": str(o.get("content") or "")[:6000]})
+        elif kind in ("orchestrator_policy_violation", "orchestrator_abort"):
+            out.append(
+                {
+                    "kind": str(kind),
+                    "zh": str(o.get("zh") or "")[:4000],
+                }
+            )
+        else:
+            try:
+                preview = json.dumps(o, ensure_ascii=False)
+            except TypeError:
+                preview = str(o)
+            out.append({"kind": str(kind), "_preview": preview[:2500]})
+
+    return out
+
+
+def _build_react_user_blob(ctx: dict[str, Any]) -> str:
+    slim_ctx = {**ctx, "observations": _compact_observations_for_llm(list(ctx.get("observations") or []))}
+    blob = json.dumps(slim_ctx, ensure_ascii=False)
+    full = len(blob)
+    if full > _MAX_LLM_CTX_JSON:
+        blob = blob[: _MAX_LLM_CTX_JSON - 80] + f"\n...[truncated, original_len={full}]"
+    return blob
+
+
+def _observation_kinds(observations: list[Any]) -> set[str]:
+    out: set[str] = set()
+    for o in observations:
+        if isinstance(o, dict) and o.get("kind"):
+            out.add(str(o["kind"]))
+    return out
+
+
+def _pipeline_next_reminder_zh(observations: list[Any], ctx: dict[str, Any]) -> str:
+    """
+    每轮注入 LLM 用户上下文：模型常跳过 graph_rag / synthesize / execute_verify 直接 finish，
+    用显式「下一步」降低空转与计费浪费。
+    """
+    kinds = _observation_kinds(observations)
+    sandbox_ok = bool(ctx.get("sandbox_success"))
+    synth_done = bool(ctx.get("synth_done"))
+    if "probe" not in kinds:
+        return "【编排器】尚无 probe：本轮必须 action=probe，action_input.targets 覆盖 target_asset。"
+    if "graph_rag" not in kinds:
+        return (
+            "【编排器】已有 probe、尚无 graph_rag：本轮禁止 finish / 禁止再次无意义 probe。"
+            "必须 action=graph_rag，action_input.question 使用系统提示中的 Weaponize 模板，"
+            "把 probe 结果里的端口/协议（如 SCTP/38412、HTTPS/443、UDP/500）填进「[协议或端口列表]」。"
+        )
+    if not synth_done:
+        return "【编排器】已有 graph_rag：本轮必须 action=synthesize（action_input 可为 {}）。禁止 finish。"
+    if "sandbox_execute" not in kinds or not sandbox_ok:
+        return (
+            "【编排器】已有 synthesize：本轮必须 action=execute_verify；"
+            "command 为单行 shell 且含字面目标 IP（与 CIDR 白名单一致），且需 allowed + exit_code==0。"
+            "在此之前禁止 finish。"
+        )
+    return "【编排器】沙箱已成功：可 action=finish。"
+
+
+def _finish_violation_zh(observations: list[Any], ctx: dict[str, Any]) -> str:
+    kinds = _observation_kinds(observations)
+    if "graph_rag" not in kinds:
+        return (
+            "禁止 finish：尚未执行 graph_rag。请下一行动作 graph_rag（Weaponize 模板 question），"
+            "不要重复 probe 或 finish。"
+        )
+    if not ctx.get("synth_done"):
+        return "禁止 finish：尚未 synthesize。请先 action=synthesize。"
+    if not ctx.get("sandbox_success"):
+        return (
+            "禁止 finish：尚未有一次成功的 execute_verify（沙箱 allowed 且 exit_code==0）。"
+            "请先 action=execute_verify 提交含目标 IP 的单行命令。"
+        )
+    return "禁止 finish：状态未满足完成条件。"
 
 
 def _sanitize_llm_shell_command(raw: str) -> str:
@@ -186,7 +421,8 @@ async def run_agent(
 
     for turn in range(1, max_turns + 1):
         started = datetime.now(timezone.utc).isoformat()
-        user_blob = json.dumps(ctx, ensure_ascii=False)
+        ctx["next_step_reminder_zh"] = _pipeline_next_reminder_zh(observations, ctx)
+        user_blob = _build_react_user_blob(ctx)
         try:
             llm_res = await get_llm_provider().chat_json(
                 system_prompt=_react_system_prompt() + f"\n当前 Schema（action 枚举约束）参考:\n{schema_json}",
@@ -216,7 +452,7 @@ async def run_agent(
         status = "ok"
 
         if decision.action == "probe":
-            raw_targets = (decision.action_input.get("targets") or target_asset or "").strip()
+            raw_targets = _as_plain_str(decision.action_input.get("targets") or target_asset)
             parts = [p.strip() for p in raw_targets.replace(";", ",").split(",") if p.strip()]
             if not parts and target_asset:
                 parts = [target_asset.strip()]
@@ -226,7 +462,10 @@ async def run_agent(
             else:
                 try:
                     pr = await probe_service.run_probe(
-                        ProbeRunRequest(targets=parts, context=decision.action_input.get("context") or f"react:{goal[:40]}")
+                        ProbeRunRequest(
+                            targets=parts,
+                            context=_as_plain_str(decision.action_input.get("context")) or f"react:{goal[:40]}",
+                        )
                     )
                     out_payload = pr.model_dump()
                     observations.append({"kind": "probe", "summary": out_payload.get("summary"), "results": out_payload.get("results")})
@@ -234,7 +473,7 @@ async def run_agent(
                     out_payload = {"error": str(exc)}
                     status = "error"
         elif decision.action == "graph_rag":
-            q = (decision.action_input.get("question") or "").strip()
+            q = _as_plain_str(decision.action_input.get("question"))
             if not q:
                 out_payload = {"error": "empty_graph_rag_question"}
                 status = "error"
@@ -273,9 +512,11 @@ async def run_agent(
                 status = "error"
         elif decision.action == "execute_verify":
             # command: 单行 shell，将交给 exploit_sandbox_service 做 CIDR/黑名单校验后再 create_subprocess_shell。
-            cmd_raw = (decision.action_input.get("command") or decision.action_input.get("cmd") or "").strip()
+            cmd_raw = _as_plain_str(
+                decision.action_input.get("command") or decision.action_input.get("cmd"),
+            )
             cmd = _sanitize_llm_shell_command(cmd_raw)
-            title = (decision.action_input.get("title") or "execute_verify").strip()
+            title = _as_plain_str(decision.action_input.get("title")) or "execute_verify"
             if not cmd:
                 out_payload = {"error": "empty_execute_verify_command"}
                 status = "error"
@@ -332,7 +573,7 @@ async def run_agent(
                 observations.append(
                     {
                         "kind": "orchestrator_policy_violation",
-                        "zh": "你尚未成功执行任何沙箱验证命令（需要沙箱允许执行且 exit_code==0）。禁止完成；请先修正后再 action=execute_verify。",
+                        "zh": _finish_violation_zh(observations, ctx),
                     }
                 )
                 out_payload = {

@@ -1,0 +1,154 @@
+{
+  "run_id": "exp_8a2d661f10",
+  "created_at": "2026-04-13T09:59:53.620972+00:00",
+  "service": "VoWiFi",
+  "mcc": "460",
+  "mnc": "001",
+  "patterns": [
+    {
+      "pattern_id": "pat_vowifi_00",
+      "service": "VoWiFi",
+      "category": "route",
+      "expression": "127.0.0.1",
+      "rationale": "Observed attack surface entrypoint from authorized active probe of supplied assets (outside-in).",
+      "evidence_docs": []
+    }
+  ],
+  "candidates": [
+    {
+      "candidate_id": "cand_000",
+      "candidate_fqdn": "127.0.0.1",
+      "service": "VoWiFi",
+      "protocols": [],
+      "network_functions": [],
+      "confidence": 0.0,
+      "evidence": {
+        "evidence_docs": [],
+        "graph_paths": [
+          "outside_in:live_probe->127.0.0.1"
+        ],
+        "related_risks": [
+          "策略未放行（ip_not_allowed_in_allowlist_mode）：资产未进入主动包级探测链；在授权实验网调整 EXPOSURE_PROBE_MODE / suffix allowlist 或 probe_allowlist_cidrs 后复扫以获取端口与协议事实。"
+        ],
+        "source_kind": [
+          "probe_observation"
+        ]
+      },
+      "probe_status": {
+        "target": "127.0.0.1",
+        "host": "127.0.0.1",
+        "permitted": false,
+        "policy_reason": "ip_not_allowed_in_allowlist_mode",
+        "dns_ok": false,
+        "dns_addresses": [],
+        "https_ok": null,
+        "https_status": null,
+        "https_latency_ms": null,
+        "open_ports": [],
+        "open_udp_ports": [],
+        "service_hints": [],
+        "tls_subject": null,
+        "tls_error": null,
+        "error": null,
+        "tcp_banners": {},
+        "udp_spike_findings": [],
+        "sctp_probe_findings": [],
+        "sbi_unauth_probe": {}
+      }
+    }
+  ],
+  "assessments": [
+    {
+      "candidate_id": "cand_000",
+      "risk_level": "medium",
+      "score": 0.55,
+      "summary": "GraphRAG 检索不可用。",
+      "conservative_explanation": "基于 GraphRAG 证据上下文的保守结论。",
+      "attack_surface_notes": [],
+      "attack_points": [],
+      "validation_tasks": [],
+      "missing_evidence": [
+        "graph_rag_context_unavailable"
+      ],
+      "evidence_refs": [],
+      "model_name": "graph_rag_synthesis",
+      "fallback_used": true
+    }
+  ],
+  "attack_paths": [
+    {
+      "path_id": "path_vowifi_00",
+      "candidate_id": "cand_000",
+      "entrypoint": "127.0.0.1",
+      "pivots": [],
+      "target_asset": "VoWiFi",
+      "likelihood": 0.0,
+      "impact": "medium",
+      "prerequisites": [
+        "authorized laboratory scope"
+      ],
+      "evidence_refs": [],
+      "validation_status": "hypothesis",
+      "techniques": [],
+      "threat_vectors": [],
+      "vulnerabilities": [],
+      "graph_rag_confidence": 0.0,
+      "graph_rag_analyst_notes": [
+        "retrieval failed: Error code: 401 - {'error': {'message': 'This token is not enabled (tid: 2026041309595351710631572930584)', 'type': 'Aihubmix_api_error'}}"
+      ]
+    }
+  ],
+  "probe_run": {
+    "run_id": "e9092063-5f55-48c8-92ed-f1a6599a025f",
+    "started_at": "2026-04-13T09:59:45.646047+00:00",
+    "finished_at": "2026-04-13T09:59:45.646047+00:00",
+    "probe_mode": "allowlist",
+    "results": [
+      {
+        "target": "127.0.0.1",
+        "host": "127.0.0.1",
+        "permitted": false,
+        "policy_reason": "ip_not_allowed_in_allowlist_mode",
+        "dns_ok": false,
+        "dns_addresses": [],
+        "https_ok": null,
+        "https_status": null,
+        "https_latency_ms": null,
+        "open_ports": [],
+        "open_udp_ports": [],
+        "service_hints": [],
+        "tls_subject": null,
+        "tls_error": null,
+        "error": null,
+        "tcp_banners": {},
+        "udp_spike_findings": [],
+        "sctp_probe_findings": [],
+        "sbi_unauth_probe": {}
+      }
+    ],
+    "summary": {
+      "total": 1,
+      "permitted": 0,
+      "dns_ok": 0,
+      "https_ok": 0,
+      "tcp_open": 0,
+      "udp_open": 0,
+      "sip_hint": 0,
+      "gtp_hint": 0,
+      "ipsec_hint": 0,
+      "tcp_banner_ports": 0,
+      "udp_spike_reply_lines": 0,
+      "sctp_init_replies": 0,
+      "sbi_paths_probed": 0
+    }
+  },
+  "report_path": "data\\runtime\\exposure_runs\\exp_8a2d661f10.md",
+  "summary": {
+    "total_candidates": 1,
+    "high_or_critical": 0,
+    "probe_reachable": 0,
+    "attack_paths": 1,
+    "validated_paths": 0,
+    "llm_used": true
+  }
+}
