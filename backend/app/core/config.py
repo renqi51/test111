@@ -158,6 +158,9 @@ class Settings(BaseSettings):
 
     # Simple RBAC for P0 operations API. Format: "admin:token1,operator:token2,viewer:token3"
     api_tokens: str = ""
+    p0_scheduler_enabled: bool = False
+    p0_scheduler_interval_sec: int = 60
+    p0_job_max_retries: int = 2
 
 
 

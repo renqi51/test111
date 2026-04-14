@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from app.schemas.p0_ops import AssetUpsertRequest, ScanJobCreateRequest
+from app.schemas.p0_ops import AssetUpsertRequest, ScanJobCreateRequest, ScanJobPatchRequest
 from app.services.auth_service import AuthContext, require_role
 from app.services import p0_ops_service
 
@@ -34,9 +34,39 @@ def p0_job_create(
     body: ScanJobCreateRequest,
     auth: AuthContext = Depends(require_role("admin", "operator")),
 ):
-    job = p0_ops_service.create_job(body.name, body.targets, body.interval_minutes, enabled=body.enabled)
+    job = p0_ops_service.create_job(
+        body.name,
+        body.targets,
+        body.interval_minutes,
+        enabled=body.enabled,
+        use_asset_inventory=body.use_asset_inventory,
+    )
     p0_ops_service.append_audit(auth.token_fingerprint, auth.role, "job_create", f"p0/jobs/{job.job_id}")
     return job.model_dump(mode="json")
+
+
+@router.patch("/jobs/{job_id}")
+def p0_job_patch(
+    job_id: str,
+    body: ScanJobPatchRequest,
+    auth: AuthContext = Depends(require_role("admin", "operator")),
+):
+    try:
+        job = p0_ops_service.patch_job(job_id, enabled=body.enabled)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    p0_ops_service.append_audit(auth.token_fingerprint, auth.role, "job_patch", f"p0/jobs/{job_id}", body.model_dump())
+    return job.model_dump(mode="json")
+
+
+@router.delete("/jobs/{job_id}")
+def p0_job_delete(job_id: str, auth: AuthContext = Depends(require_role("admin"))):
+    try:
+        p0_ops_service.delete_job(job_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    p0_ops_service.append_audit(auth.token_fingerprint, auth.role, "job_delete", f"p0/jobs/{job_id}")
+    return {"ok": True}
 
 
 @router.post("/jobs/{job_id}/run")
@@ -48,12 +78,14 @@ async def p0_job_run(
         summary = await p0_ops_service.run_job_once(job_id)
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
     p0_ops_service.append_audit(
         auth.token_fingerprint,
         auth.role,
         "job_run",
         f"p0/jobs/{job_id}",
-        {"run_id": summary.run_id},
+        {"run_id": summary.run_id, "attempts": summary.attempts},
     )
     return summary.model_dump(mode="json")
 
@@ -78,3 +110,8 @@ def p0_runs(
     _: AuthContext = Depends(require_role("admin", "operator", "viewer")),
 ):
     return {"runs": p0_ops_service.list_runs(job_id=job_id, limit=max(1, min(200, limit)))}
+
+
+@router.get("/audit")
+def p0_audit(limit: int = 50, _: AuthContext = Depends(require_role("admin", "viewer"))):
+    return {"rows": p0_ops_service.list_audit(limit=max(1, min(500, limit)))}

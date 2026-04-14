@@ -1,4 +1,6 @@
 import logging
+import threading
+import asyncio
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -10,8 +12,41 @@ from pathlib import Path
 
 from app.repositories.graph_repository import get_graph_repository
 from app.utils.file_parser import read_rule_context_multi, supported_input_suffixes
+from app.services import p0_ops_service
 
 logger = logging.getLogger(__name__)
+
+
+_P0_STOP_EVENT = threading.Event()
+_P0_THREAD: threading.Thread | None = None
+
+
+def _start_p0_scheduler() -> None:
+    global _P0_THREAD
+    if not settings.p0_scheduler_enabled or _P0_THREAD is not None:
+        return
+
+    def _worker() -> None:
+        while not _P0_STOP_EVENT.is_set():
+            try:
+                asyncio.run(p0_ops_service.run_due_jobs())
+            except Exception:  # noqa: BLE001
+                logger.exception("P0 scheduler tick failed")
+            _P0_STOP_EVENT.wait(max(5, int(settings.p0_scheduler_interval_sec)))
+
+    _P0_THREAD = threading.Thread(target=_worker, name="p0-scheduler", daemon=True)
+    _P0_THREAD.start()
+    logger.info("P0 scheduler started interval=%ss", settings.p0_scheduler_interval_sec)
+
+
+def _stop_p0_scheduler() -> None:
+    global _P0_THREAD
+    if _P0_THREAD is None:
+        return
+    _P0_STOP_EVENT.set()
+    _P0_THREAD.join(timeout=2)
+    _P0_THREAD = None
+
 
 
 def _configure_logging() -> None:
@@ -131,3 +166,8 @@ def system_status():
 @app.get("/api/health")
 def health():
     return {"status": "ok"}
+
+
+@app.on_event("shutdown")
+def _shutdown():
+    _stop_p0_scheduler()

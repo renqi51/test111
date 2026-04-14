@@ -52,9 +52,12 @@ python scripts/seed_graph.py
 | POST | `/api/p0/assets/upsert` | 批量写入/激活资产（需 API Key） |
 | GET | `/api/p0/jobs` | 扫描任务列表（需 API Key） |
 | POST | `/api/p0/jobs` | 创建周期扫描任务（需 API Key） |
+| PATCH | `/api/p0/jobs/{job_id}` | 启停任务（需 API Key） |
+| DELETE | `/api/p0/jobs/{job_id}` | 删除任务（需 API Key） |
 | POST | `/api/p0/jobs/{job_id}/run` | 立即执行任务并生成差异（需 API Key） |
 | POST | `/api/p0/scheduler/tick` | 执行到期任务（需 API Key） |
 | GET | `/api/p0/runs` | 查询运行与差异记录（需 API Key） |
+| GET | `/api/p0/audit` | 查询审计日志（需 API Key） |
 
 ## 存储扩展
 
@@ -72,6 +75,9 @@ Neo4j 推荐用项目根目录的 `docker-compose.neo4j.yml` + `scripts/start-ne
 
 ```bash
 EXPOSURE_API_TOKENS="admin:adminkey,operator:opkey,viewer:viewkey"
+EXPOSURE_P0_SCHEDULER_ENABLED=true
+EXPOSURE_P0_SCHEDULER_INTERVAL_SEC=60
+EXPOSURE_P0_JOB_MAX_RETRIES=2
 ```
 
-通过请求头 `X-API-Key` 调用 `/api/p0/*` 端点。系统会在 `backend/data/runtime/p0/audit.jsonl` 写入审计日志，并在 `runs.json` 保存每次运行与相对上次基线的暴露面变化（新增主机、端口变化、HTTPS 状态变化）。
+通过请求头 `X-API-Key` 调用 `/api/p0/*` 端点。系统会在 `backend/data/runtime/p0/audit.jsonl` 写入审计日志，并在 `runs.json` 保存每次运行与相对上次基线的暴露面变化（新增/消失主机、端口变化、HTTPS 状态变化）。开启 `EXPOSURE_P0_SCHEDULER_ENABLED=true` 后，服务启动会自动后台周期执行到期任务。
