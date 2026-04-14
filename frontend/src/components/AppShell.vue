@@ -33,6 +33,10 @@
           <el-icon><Aim /></el-icon>
           <span>候选暴露面</span>
         </el-menu-item>
+        <el-menu-item index="/p0">
+          <el-icon><Setting /></el-icon>
+          <span>P0 运维</span>
+        </el-menu-item>
       </el-menu>
     </el-aside>
     <el-container>
@@ -56,7 +60,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { useRoute } from "vue-router";
-import { Odometer, Share, Document, Aim, ChatLineSquare } from "@element-plus/icons-vue";
+import { Odometer, Share, Document, Aim, ChatLineSquare, Setting } from "@element-plus/icons-vue";
 
 const route = useRoute();
 const active = computed(() => (route.path === "/" ? "/" : route.path));
