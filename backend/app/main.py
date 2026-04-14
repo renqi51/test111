@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
 from app.utils.storage import init_runtime_from_seed_if_missing
-from app.api import graph, extract, extraction, exposure, reports, demo, experiments, skills, agent, mcp, probe, builder, graph_rag
+from app.api import graph, extract, extraction, exposure, reports, demo, experiments, skills, agent, mcp, probe, builder, graph_rag, p0_ops
 from pathlib import Path
 
 from app.repositories.graph_repository import get_graph_repository
@@ -76,6 +76,7 @@ app.include_router(mcp.router, prefix="/api")
 app.include_router(probe.router, prefix="/api")
 app.include_router(builder.router, prefix="/api")
 app.include_router(graph_rag.router, prefix="/api")
+app.include_router(p0_ops.router, prefix="/api")
 
 
 @app.get("/api/system/status")

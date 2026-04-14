@@ -48,6 +48,13 @@ python scripts/seed_graph.py
 | POST | `/api/agent/run` | 让 Agent 按预设流程调用多个 skill |
 | GET | `/api/agent/runs` | Agent 历史运行列表 |
 | GET | `/api/agent/runs/{run_id}` | Agent 单次运行详情 |
+| GET | `/api/p0/assets` | 资产清单（需 API Key） |
+| POST | `/api/p0/assets/upsert` | 批量写入/激活资产（需 API Key） |
+| GET | `/api/p0/jobs` | 扫描任务列表（需 API Key） |
+| POST | `/api/p0/jobs` | 创建周期扫描任务（需 API Key） |
+| POST | `/api/p0/jobs/{job_id}/run` | 立即执行任务并生成差异（需 API Key） |
+| POST | `/api/p0/scheduler/tick` | 执行到期任务（需 API Key） |
+| GET | `/api/p0/runs` | 查询运行与差异记录（需 API Key） |
 
 ## 存储扩展
 
@@ -58,3 +65,13 @@ python scripts/seed_graph.py
 
 Neo4j 推荐用项目根目录的 `docker-compose.neo4j.yml` + `scripts/start-neo4j.ps1` 一键启动。
 
+
+## P0 能力启用（最小 RBAC）
+
+在 `.env` 配置：
+
+```bash
+EXPOSURE_API_TOKENS="admin:adminkey,operator:opkey,viewer:viewkey"
+```
+
+通过请求头 `X-API-Key` 调用 `/api/p0/*` 端点。系统会在 `backend/data/runtime/p0/audit.jsonl` 写入审计日志，并在 `runs.json` 保存每次运行与相对上次基线的暴露面变化（新增主机、端口变化、HTTPS 状态变化）。
