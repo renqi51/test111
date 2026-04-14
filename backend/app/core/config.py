@@ -156,5 +156,9 @@ class Settings(BaseSettings):
     exploit_sandbox_timeout_sec: float = 15.0
     exploit_sandbox_max_output_chars: int = 8000
 
+    # Simple RBAC for P0 operations API. Format: "admin:token1,operator:token2,viewer:token3"
+    api_tokens: str = ""
+
+
 
 settings = Settings()
